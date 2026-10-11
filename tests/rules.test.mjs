@@ -61,23 +61,30 @@ await t("unassigned staff cannot read project", () => assertFails(getDoc(doc(db(
 const E = { vendorId: "v1", vendorName: "Milk Co", vendorType: "Dairy", unit: "litre", date: "2026-10-11", slot: "Morning",
   orderedQty: 10, receivedQty: 0, remark: "", ordered: false, received: false, createdBy: "s1", createdByName: "S1" };
 await t("staff adds item (open project)", () => assertSucceeds(setDoc(doc(db("s1"), "projects/p1/entries/e1"), E)));
-await t("staff cannot add pre-ticked item", () => assertFails(setDoc(doc(db("s1"), "projects/p1/entries/e2"), { ...E, ordered: true })));
+await t("staff can add pre-ticked item", () => assertSucceeds(setDoc(doc(db("s1"), "projects/p1/entries/e2"), { ...E, ordered: true })));
+await t("staff cannot add received-but-not-ordered", () => assertFails(setDoc(doc(db("s1"), "projects/p1/entries/e2b"), { ...E, received: true })));
 await t("staff cannot add outside dates", () => assertFails(setDoc(doc(db("s1"), "projects/p1/entries/e3"), { ...E, date: "2026-10-20" })));
 await t("staff cannot add bad slot", () => assertFails(setDoc(doc(db("s1"), "projects/p1/entries/e4"), { ...E, slot: "Lunch" })));
 await t("unassigned staff cannot add", () => assertFails(setDoc(doc(db("s2"), "projects/p1/entries/e5"), { ...E, createdBy: "s2" })));
 await t("staff updates received qty", () => assertSucceeds(updateDoc(doc(db("s1"), "projects/p1/entries/e1"), { receivedQty: 8 })));
-await t("staff cannot tick ordered", () => assertFails(updateDoc(doc(db("s1"), "projects/p1/entries/e1"), { ordered: true })));
-await t("admin ticks ordered", () => assertSucceeds(updateDoc(doc(db("adm"), "projects/p1/entries/e1"), { ordered: true })));
+await t("staff ticks ordered", () => assertSucceeds(updateDoc(doc(db("s1"), "projects/p1/entries/e1"), { ordered: true })));
+await t("staff cannot untick ordered", () => assertFails(updateDoc(doc(db("s1"), "projects/p1/entries/e1"), { ordered: false })));
+await t("admin can untick and re-tick ordered", async () => {
+  await assertSucceeds(updateDoc(doc(db("adm"), "projects/p1/entries/e1"), { ordered: false }));
+  await assertSucceeds(updateDoc(doc(db("adm"), "projects/p1/entries/e1"), { ordered: true }));
+});
 await t("staff cannot change qty after ordered", () => assertFails(updateDoc(doc(db("s1"), "projects/p1/entries/e1"), { orderedQty: 20 })));
 await t("staff can still change received qty", () => assertSucceeds(updateDoc(doc(db("s1"), "projects/p1/entries/e1"), { receivedQty: 9 })));
 await t("staff cannot delete ordered item", () => assertFails(deleteDoc(doc(db("s1"), "projects/p1/entries/e1"))));
-await t("admin ticks received", () => assertSucceeds(updateDoc(doc(db("adm"), "projects/p1/entries/e1"), { received: true })));
+await t("staff ticks received", () => assertSucceeds(updateDoc(doc(db("s1"), "projects/p1/entries/e1"), { received: true })));
+await t("staff cannot untick received", () => assertFails(updateDoc(doc(db("s1"), "projects/p1/entries/e1"), { received: false })));
 await t("staff cannot change received qty after received", () => assertFails(updateDoc(doc(db("s1"), "projects/p1/entries/e1"), { receivedQty: 10 })));
 await t("staff adds photo record", () => assertSucceeds(setDoc(doc(db("s1"), "projects/p1/photos/ph1"), { bucket: "Kitchen", uploadedBy: "s1", url: "u", path: "p" })));
 
 // ---- freeze modes
 await updateDoc(doc(db("adm"), "projects/p1"), { freeze: "readonly" });
 await t("readonly: staff can read items", () => assertSucceeds(getDocs(collection(db("s1"), "projects/p1/entries"))));
+await t("readonly: staff cannot tick", () => assertFails(updateDoc(doc(db("s1"), "projects/p1/entries/e2"), { received: true })));
 await t("readonly: staff cannot add", () => assertFails(setDoc(doc(db("s1"), "projects/p1/entries/e6"), E)));
 await t("readonly: staff cannot add photo", () => assertFails(setDoc(doc(db("s1"), "projects/p1/photos/ph2"), { bucket: "K", uploadedBy: "s1" })));
 await t("readonly: admin can still add", () => assertSucceeds(setDoc(doc(db("adm"), "projects/p1/entries/e7"), E)));

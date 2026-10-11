@@ -26,7 +26,7 @@ These modes apply instantly, even on phones that already have the project open.
 - Choose a vendor type, then the vendor name. The unit fills in from the vendor master.
 - Pick a date inside the project's date range and a time (Morning / Afternoon / Evening / Night).
 - Enter the ordered quantity and the received quantity.
-- **Ordered** and **Received** ticks can only be set by admins. Staff see them but can't change them.
+- **Ordered** and **Received** ticks: staff can tick them (on projects open to them), but once ticked only an admin can untick. Staff are asked to confirm before ticking.
 - After an admin ticks *Ordered*, staff can't change that item's details. After *Received*, staff can't change the received quantity.
 - If someone adds the same vendor, date and time twice, the app warns them.
 
@@ -51,6 +51,8 @@ These modes apply instantly, even on phones that already have the project open.
 - **Works offline**: entries made with no signal are saved and sync automatically later. (Photos need internet.)
 - Live updates: several staff can work on the same project at once
 - Staff can log in with a **username** (no email needed)
+- **Hindi**: the login page and all staff screens have an English / हिंदी switch (remembered per phone). Admin screens stay in English. Translations live in `js/i18n.js`.
+- Password fields have an eye button to show/hide what's typed
 - Can be installed on a phone's home screen (PWA manifest)
 
 ---

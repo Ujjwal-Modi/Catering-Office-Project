@@ -12,26 +12,27 @@
 <body>
   <main class="auth-page">
     <div class="auth-card">
+      <div class="auth-lang" id="lang-slot"></div>
       <div class="auth-logo">🍽</div>
       <h1 id="app-name">Catering Office</h1>
-      <p class="muted">Sign in to continue</p>
+      <p class="muted" data-i18n>Sign in to continue</p>
 
       <div id="notice" class="banner banner-warn" hidden></div>
 
       <form id="login-form" novalidate>
         <div class="field">
-          <label for="login-id">Email or username</label>
+          <label for="login-id" data-i18n>Email or username</label>
           <input id="login-id" name="loginId" autocomplete="username" autocapitalize="none" required />
         </div>
         <div class="field">
-          <label for="password">Password</label>
+          <label for="password" data-i18n>Password</label>
           <input id="password" name="password" type="password" autocomplete="current-password" required />
         </div>
-        <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+        <button class="btn btn-primary btn-block" type="submit" data-i18n>Sign in</button>
       </form>
 
       <div class="auth-foot">
-        <a href="#" id="forgot-link">Forgot password?</a>
+        <a href="#" id="forgot-link" data-i18n>Forgot password?</a>
         <p id="setup-link" class="mt" hidden>
           First time here? <a href="setup.html">Create the root admin</a>
         </p>

@@ -15,27 +15,27 @@
       <div class="page" id="page">
         <div class="grid-2">
           <form class="card" id="profile-form" novalidate>
-            <div class="card-head"><h3>My details</h3></div>
+            <div class="card-head"><h3 data-i18n>My details</h3></div>
             <div class="form-grid">
-              <div class="field"><label class="req" for="name">Name</label><input id="name" name="name" required /></div>
-              <div class="field"><label for="phone">Phone</label><input id="phone" name="phone" type="tel" /></div>
-              <div class="field"><label for="login-id">Login ID</label><input id="login-id" disabled /></div>
-              <div class="field"><label for="role">Role</label><input id="role" disabled /></div>
+              <div class="field"><label class="req" for="name" data-i18n>Name</label><input id="name" name="name" required /></div>
+              <div class="field"><label for="phone" data-i18n>Phone</label><input id="phone" name="phone" type="tel" /></div>
+              <div class="field"><label for="login-id" data-i18n>Login ID</label><input id="login-id" disabled /></div>
+              <div class="field"><label for="role" data-i18n>Role</label><input id="role" disabled /></div>
             </div>
-            <div class="gap mt" style="justify-content:flex-end"><button class="btn btn-primary" type="submit">Save</button></div>
+            <div class="gap mt" style="justify-content:flex-end"><button class="btn btn-primary" type="submit" data-i18n>Save</button></div>
           </form>
 
           <form class="card" id="password-form" novalidate>
-            <div class="card-head"><h3>Change password</h3></div>
+            <div class="card-head"><h3 data-i18n>Change password</h3></div>
             <div class="form-grid">
-              <div class="field"><label class="req" for="current">Current password</label><input id="current" name="current" type="password" autocomplete="current-password" required /></div>
-              <div class="field"><label class="req" for="next">New password</label><input id="next" name="next" type="password" minlength="6" autocomplete="new-password" required /></div>
-              <div class="field"><label class="req" for="confirm">Confirm new password</label><input id="confirm" name="confirm" type="password" minlength="6" autocomplete="new-password" required /></div>
+              <div class="field"><label class="req" for="current" data-i18n>Current password</label><input id="current" name="current" type="password" autocomplete="current-password" required /></div>
+              <div class="field"><label class="req" for="next" data-i18n>New password</label><input id="next" name="next" type="password" minlength="6" autocomplete="new-password" required /></div>
+              <div class="field"><label class="req" for="confirm" data-i18n>Confirm new password</label><input id="confirm" name="confirm" type="password" minlength="6" autocomplete="new-password" required /></div>
             </div>
-            <div class="gap mt" style="justify-content:flex-end"><button class="btn btn-primary" type="submit">Change password</button></div>
+            <div class="gap mt" style="justify-content:flex-end"><button class="btn btn-primary" type="submit" data-i18n>Change password</button></div>
           </form>
         </div>
-        <p class="mt"><button class="btn btn-ghost" id="logout">Log out</button></p>
+        <p class="mt"><button class="btn btn-ghost" id="logout" data-i18n>Log out</button></p>
       </div>
     </main>
   </div>

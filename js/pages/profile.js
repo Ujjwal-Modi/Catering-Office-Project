@@ -3,7 +3,8 @@ import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 
 import { requireAuth, ROLES, loginLabel, logout } from "../auth.js";
 import { renderShell } from "../layout.js";
 import { updateOwnProfile } from "../data.js";
-import { $, toast, errorText, setBusy } from "../ui.js";
+import { $, toast, errorText, setBusy, addPasswordToggles } from "../ui.js";
+import { t } from "../i18n.js";
 
 const profile = await requireAuth();
 renderShell(profile, { active: "profile", title: "My Profile" });
@@ -12,7 +13,8 @@ const f = $("#profile-form");
 f.name.value = profile.name || "";
 f.phone.value = profile.phone || "";
 $("#login-id").value = loginLabel(profile.email);
-$("#role").value = ROLES[profile.role];
+$("#role").value = t(ROLES[profile.role]);
+addPasswordToggles();
 $("#logout").onclick = logout;
 
 f.addEventListener("submit", async (e) => {

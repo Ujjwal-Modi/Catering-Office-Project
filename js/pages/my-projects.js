@@ -4,6 +4,7 @@ import { watchMyProjects } from "../data.js";
 import {
   $, esc, emptyState, errorText, debounce, projectStatus, STATUS_BADGE, FREEZE, rangeLabel, fmtNum, toast, accessFor,
 } from "../ui.js";
+import { t } from "../i18n.js";
 
 const profile = await requireAuth();
 if (profile.isAdmin) location.replace("projects.html");
@@ -11,7 +12,7 @@ renderShell(profile, { active: "projects", title: "My Projects" });
 
 let projects = [];
 let ready = false;
-$("#hello").textContent = `Hello, ${profile.name.split(" ")[0]} 👋`;
+$("#hello").textContent = t("Hello, {name} 👋", { name: profile.name.split(" ")[0] });
 $("#search").oninput = debounce(render);
 $("#status-filter").onchange = render;
 // Live list: appears once the server answers; access changes by admin show instantly.
@@ -50,15 +51,15 @@ function render() {
     return `
       <article class="card project-card ${fz === "locked" ? "is-locked" : ""}" data-id="${p.id}" ${fz === "locked" ? 'data-locked="1"' : ""}>
         <div class="gap">
-          <span class="badge ${STATUS_BADGE[st]}">${st}</span>
-          ${fz !== "none" ? `<span class="badge ${FREEZE[fz].badge}">${fz === "locked" ? "🔒 " : "👁 "}${FREEZE[fz].label}</span>` : ""}
+          <span class="badge ${STATUS_BADGE[st]}">${t(st)}</span>
+          ${fz !== "none" ? `<span class="badge ${FREEZE[fz].badge}">${fz === "locked" ? "🔒 " : "👁 "}${t(FREEZE[fz].label)}</span>` : ""}
         </div>
         <h3 class="mt">${esc(p.name)}</h3>
         <div class="meta">
           <span>📅 ${rangeLabel(p)}</span>
           ${p.venue ? `<span>📍 ${esc(p.venue)}</span>` : ""}
           ${p.eventType ? `<span>🎉 ${esc(p.eventType)}</span>` : ""}
-          ${p.pax ? `<span>👥 ${fmtNum(p.pax)} pax</span>` : ""}
+          ${p.pax ? `<span>👥 ${t("{n} pax", { n: fmtNum(p.pax) })}</span>` : ""}
         </div>
       </article>`;
   }).join("");

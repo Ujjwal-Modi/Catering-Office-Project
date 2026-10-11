@@ -1,4 +1,5 @@
 /* Shared UI helpers: DOM, formatting, toasts, modals. No Firebase here. */
+import { t, locale } from "./i18n.js";
 
 export const SLOTS = ["Morning", "Afternoon", "Evening", "Night"];
 export const PAYMENT_MODES = ["Cash", "UPI", "Bank Transfer", "Cheque", "Other"];
@@ -51,11 +52,11 @@ export const num = (v) => {
 };
 
 export const fmtNum = (v) =>
-  num(v).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  num(v).toLocaleString(locale(), { maximumFractionDigits: 2 });
 
 export const fmtMoney = (v) =>
   (num(v) < 0 ? "−₹" : "₹") +
-  Math.abs(num(v)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  Math.abs(num(v)).toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function debounce(fn, ms = 250) {
   let t;
@@ -80,7 +81,7 @@ export function toISO(d) {
 export function fmtDate(iso) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-IN", {
+  return new Date(y, m - 1, d).toLocaleDateString(locale(), {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -90,7 +91,7 @@ export function fmtDate(iso) {
 export function fmtDay(iso) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-IN", {
+  return new Date(y, m - 1, d).toLocaleDateString(locale(), {
     weekday: "short",
     day: "2-digit",
     month: "short",
@@ -100,7 +101,7 @@ export function fmtDay(iso) {
 export function fmtDateTime(ts) {
   if (!ts) return "";
   const d = typeof ts.toDate === "function" ? ts.toDate() : new Date(ts);
-  return d.toLocaleString("en-IN", {
+  return d.toLocaleString(locale(), {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -150,7 +151,7 @@ export function toast(message, type = "info") {
   }
   const el = document.createElement("div");
   el.className = `toast toast-${type}`;
-  el.textContent = message;
+  el.textContent = t(message);
   host.appendChild(el);
   setTimeout(() => el.classList.add("hide"), 3200);
   setTimeout(() => el.remove(), 3600);
@@ -170,14 +171,14 @@ export function errorText(err) {
     "permission-denied": "You don't have permission to do that.",
     "unavailable": "Can't reach the server. Check your internet.",
   };
-  return map[code] || err?.message || "Something went wrong.";
+  return t(map[code] || err?.message || "Something went wrong.");
 }
 
 export function setBusy(btn, busy, busyText = "Saving…") {
   if (!btn) return;
   if (busy) {
     btn.dataset.label = btn.innerHTML;
-    btn.innerHTML = `<span class="spinner"></span> ${esc(busyText)}`;
+    btn.innerHTML = `<span class="spinner"></span> ${esc(t(busyText))}`;
     btn.disabled = true;
   } else {
     btn.innerHTML = btn.dataset.label || btn.innerHTML;
@@ -200,7 +201,7 @@ export async function save(promise, okMsg = "Saved") {
 }
 
 export function emptyState(message, icon = "📋") {
-  return `<div class="empty"><div class="empty-icon">${icon}</div><p>${esc(message)}</p></div>`;
+  return `<div class="empty"><div class="empty-icon">${icon}</div><p>${esc(t(message))}</p></div>`;
 }
 
 /* ---------------- Modal ---------------- */
@@ -217,15 +218,15 @@ export function openModal({ title, body, submitLabel = "Save", onSubmit, wide = 
   backdrop.innerHTML = `
     <${tag} class="modal ${wide ? "modal-wide" : ""}" role="dialog" aria-modal="true" ${onSubmit ? "novalidate" : ""}>
       <header class="modal-head">
-        <h3>${esc(title)}</h3>
+        <h3>${esc(t(title))}</h3>
         <button type="button" class="icon-btn" data-close aria-label="Close">✕</button>
       </header>
       <div class="modal-body">${body}</div>
       ${
         footer
           ? `<footer class="modal-foot">
-              <button type="button" class="btn btn-ghost" data-close>${onSubmit ? "Cancel" : "Close"}</button>
-              ${onSubmit ? `<button type="submit" class="btn btn-primary">${esc(submitLabel)}</button>` : ""}
+              <button type="button" class="btn btn-ghost" data-close>${t(onSubmit ? "Cancel" : "Close")}</button>
+              ${onSubmit ? `<button type="submit" class="btn btn-primary">${esc(t(submitLabel))}</button>` : ""}
             </footer>`
           : ""
       }
@@ -279,14 +280,14 @@ export function confirmDialog(message, { okLabel = "Delete", danger = true } = {
   return new Promise((resolve) => {
     const { el, close } = openModal({
       title: "Please confirm",
-      body: `<p>${esc(message)}</p>`,
+      body: `<p>${esc(t(message))}</p>`,
       footer: false,
     });
     el.insertAdjacentHTML(
       "beforeend",
       `<footer class="modal-foot">
-        <button type="button" class="btn btn-ghost" data-no>Cancel</button>
-        <button type="button" class="btn ${danger ? "btn-danger" : "btn-primary"}" data-yes>${esc(okLabel)}</button>
+        <button type="button" class="btn btn-ghost" data-no>${t("Cancel")}</button>
+        <button type="button" class="btn ${danger ? "btn-danger" : "btn-primary"}" data-yes>${esc(t(okLabel))}</button>
       </footer>`
     );
     el.querySelector("[data-yes]").onclick = () => { close(); resolve(true); };
@@ -307,6 +308,35 @@ export function options(list, selected, { placeholder } = {}) {
       })
       .join("")
   );
+}
+
+/** Adds an eye button to every password field so people can see what they type. */
+export function addPasswordToggles(root = document) {
+  root.querySelectorAll('input[type="password"]').forEach((input) => {
+    if (input.closest(".pw-wrap")) return;
+    const wrap = document.createElement("div");
+    wrap.className = "pw-wrap";
+    input.replaceWith(wrap);
+    wrap.appendChild(input);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pw-eye";
+    const EYE = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 5c-5 0-9.3 3.1-11 7 1.7 3.9 6 7 11 7s9.3-3.1 11-7c-1.7-3.9-6-7-11-7zm0 11.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9zm0-7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>';
+    const EYE_OFF = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M2.1 3.5 3.5 2.1l18.4 18.4-1.4 1.4-3.2-3.2A12 12 0 0 1 12 19c-5 0-9.3-3.1-11-7a12.6 12.6 0 0 1 4-4.9zm5.6 5.6a4.5 4.5 0 0 0 6.2 6.2l-1.5-1.5a2.5 2.5 0 0 1-3.2-3.2zM12 5c5 0 9.3 3.1 11 7a12.4 12.4 0 0 1-3.3 4.4l-3.3-3.3A4.5 4.5 0 0 0 10.9 7.6L8.6 5.3A12 12 0 0 1 12 5z"/></svg>';
+    const sync = () => {
+      const shown = input.type === "text";
+      btn.innerHTML = shown ? EYE_OFF : EYE;
+      btn.setAttribute("aria-label", t(shown ? "Hide password" : "Show password"));
+      btn.title = btn.getAttribute("aria-label");
+    };
+    // mousedown keeps focus (and the phone keyboard) on the field.
+    btn.addEventListener("mousedown", (e) => e.preventDefault());
+    btn.addEventListener("click", () => { input.type = input.type === "password" ? "text" : "password"; sync(); });
+    // Hide again after submitting so the browser can offer to save it.
+    input.form?.addEventListener("submit", () => { input.type = "password"; sync(); });
+    sync();
+    wrap.appendChild(btn);
+  });
 }
 
 export function qs(name) {

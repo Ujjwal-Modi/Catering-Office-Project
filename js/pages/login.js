@@ -2,11 +2,16 @@ import { auth, db, isConfigured } from "../firebase.js";
 import { signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut, doc, getDoc } from "../sdk.js";
 import { toEmail, isUsernameLogin, loadProfile, homeFor } from "../auth.js";
 import { APP_NAME } from "../firebase-config.js";
-import { $, toast, errorText, setBusy, qs } from "../ui.js";
+import { $, toast, errorText, setBusy, qs, addPasswordToggles } from "../ui.js";
+import { t, applyI18n, langToggleHTML, bindLangToggle } from "../i18n.js";
 
 $("#app-name").textContent = APP_NAME;
+$("#lang-slot").innerHTML = langToggleHTML();
+bindLangToggle();
+applyI18n();
+addPasswordToggles();
 const notice = $("#notice");
-const showNotice = (html) => { notice.innerHTML = html; notice.hidden = false; };
+const showNotice = (html) => { notice.innerHTML = t(html); notice.hidden = false; };
 
 if (!isConfigured) {
   showNotice("Firebase is not configured yet. Open <b>js/firebase-config.js</b> and paste your project's config (see README).");

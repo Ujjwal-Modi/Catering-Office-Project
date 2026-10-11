@@ -370,3 +370,18 @@ table.table { width: 100%; border-collapse: collapse; font-size: .9rem; }
   .photo { break-inside: avoid; }
 }
 .print-only { display: none; }
+
+/* Password field with show/hide eye button */
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 2.75rem; width: 100%; }
+.pw-eye {
+  position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
+  width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: var(--radius-sm);
+}
+.pw-eye:hover, .pw-eye:focus-visible { color: var(--primary); }
+
+/* Language switch */
+.lang-toggle { font-weight: 600; white-space: nowrap; }
+.auth-lang { display: flex; justify-content: flex-end; margin: -.75rem -.5rem .25rem 0; }
+.topbar .lang-toggle { padding: .3rem .6rem; min-height: 0; font-size: .85rem; }

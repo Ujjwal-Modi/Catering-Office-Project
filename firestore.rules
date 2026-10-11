@@ -38,6 +38,15 @@ service cloud.firestore {
         && d.get('staffAccess', {}).values().hasOnly(['none', 'readonly', 'locked']);
     }
     function inProjectDates(pid, d) { return d >= project(pid).startDate && d <= project(pid).endDate; }
+    // Ordered / Received ticks: booleans, and "received" implies "ordered".
+    function validTicks(d) {
+      return d.ordered is bool && d.received is bool && (d.received == false || d.ordered == true);
+    }
+    // Staff may tick but never untick (only admins can).
+    function noUntick() {
+      return !(resource.data.ordered == true && request.resource.data.ordered != true)
+        && !(resource.data.received == true && request.resource.data.received != true);
+    }
 
     // ---------- first-time setup ----------
     match /meta/setup {
@@ -105,8 +114,7 @@ service cloud.firestore {
         allow create: if isAdmin() || (
           canWrite(pid)
           && request.resource.data.createdBy == request.auth.uid
-          && request.resource.data.ordered == false
-          && request.resource.data.received == false
+          && validTicks(request.resource.data)
           && request.resource.data.slot in ['Morning', 'Afternoon', 'Evening', 'Night']
           && request.resource.data.orderedQty is number && request.resource.data.orderedQty > 0
           && inProjectDates(pid, request.resource.data.date)
@@ -114,9 +122,12 @@ service cloud.firestore {
 
         allow update: if isAdmin() || (
           canWrite(pid)
-          // staff can never touch the Ordered / Received ticks
+          // staff can tick Ordered / Received, but only admins can untick them
           && changed().hasOnly(['vendorId', 'vendorName', 'vendorType', 'unit', 'date', 'slot',
-                                'orderedQty', 'receivedQty', 'remark', 'updatedAt', 'updatedBy', 'updatedByName'])
+                                'orderedQty', 'receivedQty', 'remark', 'ordered', 'received',
+                                'updatedAt', 'updatedBy', 'updatedByName'])
+          && validTicks(request.resource.data)
+          && noUntick()
           // once ordered, item details are fixed
           && (resource.data.ordered == false
               || !changed().hasAny(['vendorId', 'vendorName', 'vendorType', 'unit', 'date', 'slot', 'orderedQty']))

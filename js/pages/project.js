@@ -12,6 +12,7 @@ import {
   SLOTS, FREEZE, datesBetween, fmtDate, fmtDay, fmtDateTime, rangeLabel, todayISO, qs, projectStatus, STATUS_BADGE,
   accessFor, accessBadges,
 } from "../ui.js";
+import { t } from "../i18n.js";
 
 const pid = qs("id");
 const profile = await requireAuth();
@@ -76,7 +77,7 @@ function stopData() {
 function fail(msg) {
   $("#project-body").hidden = true;
   $("#blocked").hidden = false;
-  $("#blocked").innerHTML = `${emptyState(msg, "🚫")}<p class="right"><a class="btn" href="${profile.isAdmin ? "projects.html" : "my-projects.html"}">← Back to projects</a></p>`;
+  $("#blocked").innerHTML = `${emptyState(msg, "🚫")}<p class="right"><a class="btn" href="${profile.isAdmin ? "projects.html" : "my-projects.html"}">${t("← Back to projects")}</a></p>`;
 }
 
 /** This staff member's own access to the project (set per staff by admin). */
@@ -87,6 +88,8 @@ const canEdit = () => profile.isAdmin || myAccess() === "none";
 const canEditDetails = (e) => profile.isAdmin || (canEdit() && !e.ordered);
 const canEditReceived = (e) => profile.isAdmin || (canEdit() && !e.received);
 const canDelete = (e) => profile.isAdmin || (canEdit() && !e.ordered && e.createdBy === profile.uid);
+/** Ordered / Received ticks: staff may tick (when they can edit) but only admins can untick. */
+const canTick = (e, flag) => profile.isAdmin || (canEdit() && !e?.[flag]);
 const canManagePhoto = (p) => profile.isAdmin || (canEdit() && p.uploadedBy === profile.uid);
 
 /* ============================ Header ============================ */
@@ -102,7 +105,7 @@ function renderHead() {
     <div class="card">
       <div class="between">
         <div>
-          <div class="gap mb"><span class="badge ${STATUS_BADGE[st]}">${st}</span>${profile.isAdmin ? ((p.assignedUsers || []).length ? accessBadges(p) : "") : `<span class="badge ${FREEZE[fz].badge}">${FREEZE[fz].label}</span>`}</div>
+          <div class="gap mb"><span class="badge ${STATUS_BADGE[st]}">${t(st)}</span>${profile.isAdmin ? ((p.assignedUsers || []).length ? accessBadges(p) : "") : `<span class="badge ${FREEZE[fz].badge}">${t(FREEZE[fz].label)}</span>`}</div>
           <h2>${esc(p.name)}</h2>
         </div>
         ${profile.isAdmin ? `
@@ -115,7 +118,7 @@ function renderHead() {
         <span>📅 ${rangeLabel(p)}</span>
         ${p.venue ? `<span>📍 ${esc(p.venue)}</span>` : ""}
         ${p.eventType ? `<span>🎉 ${esc(p.eventType)}</span>` : ""}
-        ${p.pax ? `<span>👥 ${fmtNum(p.pax)} pax</span>` : ""}
+        ${p.pax ? `<span>👥 ${t("{n} pax", { n: fmtNum(p.pax) })}</span>` : ""}
         ${p.contact ? `<span>📞 ${esc(p.contact)}</span>` : ""}
       </div>
       ${p.remark ? `<p class="small mt">${esc(p.remark)}</p>` : ""}
@@ -126,7 +129,7 @@ function renderHead() {
   if (!profile.isAdmin && fz === "readonly") {
     banner.hidden = false;
     banner.className = "banner banner-warn";
-    banner.textContent = "👁 Admin has set this project to view only for you — you can view it but not make changes.";
+    banner.textContent = t("👁 Admin has set this project to view only for you — you can view it but not make changes.");
   } else if (profile.isAdmin) {
     const name = (uid) => state.users.find((u) => u.uid === uid)?.name || "Removed user";
     const restricted = (p.assignedUsers || []).filter((uid) => accessFor(p, uid) !== "none");
@@ -142,10 +145,10 @@ function renderHead() {
 
 function bindStatic() {
   $(".tabs").addEventListener("click", (e) => {
-    const t = e.target.closest("[data-tab]");
-    if (!t) return;
-    state.tab = t.dataset.tab;
-    $$(".tab").forEach((b) => b.classList.toggle("active", b === t));
+    const tab = e.target.closest("[data-tab]");
+    if (!tab) return;
+    state.tab = tab.dataset.tab;
+    $$(".tab").forEach((b) => b.classList.toggle("active", b === tab));
     $$("[data-panel]").forEach((p) => (p.hidden = p.dataset.panel !== state.tab));
   });
   ["#f-date", "#f-slot", "#f-type", "#f-status"].forEach((s) => ($(s).onchange = renderEntriesSafe));
@@ -190,9 +193,9 @@ const activeVendors = (type) => state.vendors.filter((v) => v.active !== false &
 const vendorTypes = () => [...new Set(activeVendors().map((v) => v.type))].sort();
 
 function defaultDate() {
-  const t = todayISO();
+  const today = todayISO();
   const dates = projectDates();
-  return dates.includes(t) ? t : dates[0];
+  return dates.includes(today) ? today : dates[0];
 }
 
 /** Shared field markup for add + edit. `e` is an existing entry or null. */
@@ -209,46 +212,47 @@ function entryFields(e, prefix) {
   return `
     <div class="form-grid cols-2">
       <div class="field">
-        <label class="req">Vendor type</label>
-        <select name="vendorType" required ${dis} data-role="type">${options(vendorTypes().concat(type && !vendorTypes().includes(type) ? [type] : []), type, { placeholder: "Select type" })}</select>
+        <label class="req">${t("Vendor type")}</label>
+        <select name="vendorType" required ${dis} data-role="type">${options(vendorTypes().concat(type && !vendorTypes().includes(type) ? [type] : []), type, { placeholder: t("Select type") })}</select>
       </div>
       <div class="field">
-        <label class="req">Vendor name</label>
-        <select name="vendorId" required ${dis} data-role="vendor">${options(vendorsOfType.map((v) => ({ value: v.id, label: v.name })), e?.vendorId, { placeholder: type ? "Select vendor" : "Select type first" })}</select>
+        <label class="req">${t("Vendor name")}</label>
+        <select name="vendorId" required ${dis} data-role="vendor">${options(vendorsOfType.map((v) => ({ value: v.id, label: v.name })), e?.vendorId, { placeholder: t(type ? "Select vendor" : "Select type first") })}</select>
       </div>
       <div class="field">
-        <label class="req">Date</label>
+        <label class="req">${t("Date")}</label>
         <select name="date" required ${dis}>${options(projectDates().map((d) => ({ value: d, label: fmtDay(d) })), e?.date || defaultDate())}</select>
       </div>
       <div class="field">
-        <label>Unit</label>
-        <input data-role="unit" value="${esc(e?.unit || "")}" disabled placeholder="Auto from vendor" />
+        <label>${t("Unit")}</label>
+        <input data-role="unit" value="${esc(e?.unit || "")}" disabled placeholder="${t("Auto from vendor")}" />
       </div>
       <div class="field span-all">
-        <label class="req">Time</label>
+        <label class="req">${t("Time")}</label>
         <div class="segmented">
           ${SLOTS.map((s) => `
             <input type="radio" id="${prefix}-slot-${s}" name="slot" value="${s}" required ${slot === s ? "checked" : ""} ${dis} />
-            <label for="${prefix}-slot-${s}">${s}</label>`).join("")}
+            <label for="${prefix}-slot-${s}">${t(s)}</label>`).join("")}
         </div>
       </div>
       <div class="field">
-        <label class="req">Ordered quantity</label>
-        <div class="unit-addon"><input name="orderedQty" type="number" min="0.01" step="any" inputmode="decimal" required value="${esc(e?.orderedQty ?? "")}" ${dis} /><span data-role="unit-tag">${esc(e?.unit || "unit")}</span></div>
+        <label class="req">${t("Ordered quantity")}</label>
+        <div class="unit-addon"><input name="orderedQty" type="number" min="0.01" step="any" inputmode="decimal" required value="${esc(e?.orderedQty ?? "")}" ${dis} /><span data-role="unit-tag">${esc(e?.unit || t("unit"))}</span></div>
       </div>
       <div class="field">
-        <label>Received quantity</label>
-        <div class="unit-addon"><input name="receivedQty" type="number" min="0" step="any" inputmode="decimal" value="${esc(e?.receivedQty || "")}" ${lockReceived ? "disabled" : ""} /><span data-role="unit-tag">${esc(e?.unit || "unit")}</span></div>
+        <label>${t("Received quantity")}</label>
+        <div class="unit-addon"><input name="receivedQty" type="number" min="0" step="any" inputmode="decimal" value="${esc(e?.receivedQty || "")}" ${lockReceived ? "disabled" : ""} /><span data-role="unit-tag">${esc(e?.unit || t("unit"))}</span></div>
       </div>
       <div class="field span-all">
-        <label>Remark</label>
-        <input name="remark" value="${esc(e?.remark || "")}" placeholder="Optional" ${!canEdit() ? "disabled" : ""} />
+        <label>${t("Remark")}</label>
+        <input name="remark" value="${esc(e?.remark || "")}" placeholder="${t("Optional")}" ${!canEdit() ? "disabled" : ""} />
       </div>
-      ${profile.isAdmin ? `
+      ${canEdit() ? `
         <div class="span-all item-flags">
-          <label class="check"><input type="checkbox" name="ordered" ${e?.ordered ? "checked" : ""}/> <span>Ordered</span></label>
-          <label class="check"><input type="checkbox" name="received" ${e?.received ? "checked" : ""}/> <span>Received</span></label>
-        </div>` : ""}
+          <label class="check"><input type="checkbox" name="ordered" ${e?.ordered ? "checked" : ""} ${canTick(e, "ordered") ? "" : "disabled"}/> <span>${t("Ordered")}</span></label>
+          <label class="check"><input type="checkbox" name="received" ${e?.received ? "checked" : ""} ${canTick(e, "received") ? "" : "disabled"}/> <span>${t("Received")}</span></label>
+        </div>
+        ${profile.isAdmin ? "" : `<p class="span-all xs muted">${t("Once ticked, Ordered and Received can only be unticked by an admin.")}</p>`}` : ""}
     </div>`;
 }
 
@@ -260,11 +264,11 @@ function wireCascade(form) {
     const v = state.vendors.find((x) => x.id === vendorSel.value);
     const unit = v?.unit || "";
     form.querySelector('[data-role="unit"]').value = unit;
-    form.querySelectorAll('[data-role="unit-tag"]').forEach((t) => (t.textContent = unit || "unit"));
+    form.querySelectorAll('[data-role="unit-tag"]').forEach((tag) => (tag.textContent = unit || t("unit")));
   };
   typeSel.addEventListener("change", () => {
     vendorSel.innerHTML = options(activeVendors(typeSel.value).map((v) => ({ value: v.id, label: v.name })), "", {
-      placeholder: typeSel.value ? "Select vendor" : "Select type first",
+      placeholder: t(typeSel.value ? "Select vendor" : "Select type first"),
     });
     setUnit();
   });
@@ -302,7 +306,7 @@ function renderAddForm() {
   }
   card.hidden = false;
   if (!vendorTypes().length) {
-    card.innerHTML = `<div class="banner banner-info">No vendors in the master yet.${profile.isAdmin ? ' <a href="vendors.html">Add vendors</a>' : " Ask an admin to add vendors."}</div>`;
+    card.innerHTML = `<div class="banner banner-info">${t("No vendors in the master yet.")}${profile.isAdmin ? ' <a href="vendors.html">Add vendors</a>' : t(" Ask an admin to add vendors.")}</div>`;
     return;
   }
   if (card.dataset.ready === state.project.startDate + state.project.endDate) return; // keep what user typed
@@ -310,12 +314,12 @@ function renderAddForm() {
   card.innerHTML = `
     <details class="card" ${window.innerWidth > 760 ? "open" : ""} id="add-details">
       <summary class="between" style="cursor:pointer;list-style:none">
-        <h3 style="font-size:1rem">➕ Add item</h3><span class="muted small">tap to ${window.innerWidth > 760 ? "collapse" : "open"}</span>
+        <h3 style="font-size:1rem">${t("➕ Add item")}</h3><span class="muted small">${t(window.innerWidth > 760 ? "tap to collapse" : "tap to open")}</span>
       </summary>
       <form id="add-form" class="mt" novalidate>
         ${entryFields(null, "add")}
         <div class="gap mt" style="justify-content:flex-end">
-          <button class="btn btn-primary" type="submit">Save item</button>
+          <button class="btn btn-primary" type="submit">${t("Save item")}</button>
         </div>
       </form>
     </details>`;
@@ -327,12 +331,12 @@ function renderAddForm() {
     if (!form.checkValidity()) return form.reportValidity();
     const d = readEntryForm(fd);
     if (!validEntry(d)) return;
-    if (profile.isAdmin) {
-      d.received = fd.get("received") === "on";
-      d.ordered = d.received || fd.get("ordered") === "on";
-    }
+    d.received = fd.get("received") === "on";
+    d.ordered = d.received || fd.get("ordered") === "on";
+    if (d.received && !d.receivedQty) d.receivedQty = d.orderedQty; // assume full delivery unless entered
     const dup = state.entries.find((x) => x.vendorId === d.vendorId && x.date === d.date && x.slot === d.slot);
-    if (dup && !(await confirmDialog(`${d.vendorName} already has ${fmtNum(dup.orderedQty)} ${dup.unit} for ${fmtDay(d.date)} ${d.slot}. Add another entry anyway?`, { okLabel: "Add anyway", danger: false }))) return;
+    if (dup && !(await confirmDialog(t("{vendor} already has {qty} {unit} for {day} {slot}. Add another entry anyway?",
+      { vendor: d.vendorName, qty: fmtNum(dup.orderedQty), unit: dup.unit, day: fmtDay(d.date), slot: t(d.slot) }), { okLabel: "Add anyway", danger: false }))) return;
     const btn = form.querySelector("button[type=submit]");
     btn.disabled = true;
     try {
@@ -343,7 +347,7 @@ function renderAddForm() {
       form.receivedQty.value = "";
       form.remark.value = "";
       form.querySelector('[data-role="unit"]').value = "";
-      if (form.ordered) form.ordered.checked = form.received.checked = false;
+      form.ordered.checked = form.received.checked = false;
       form.vendorId.focus();
     } catch (err) {
       toast(errorText(err), "error");
@@ -357,8 +361,8 @@ function renderAddForm() {
 
 function renderFilters() {
   const keep = (sel, html) => { const v = $(sel).value; $(sel).innerHTML = html; $(sel).value = v; };
-  keep("#f-date", options(projectDates().map((d) => ({ value: d, label: fmtDay(d) })), "", { placeholder: "All dates" }));
-  keep("#f-type", options([...new Set([...vendorTypes(), ...state.entries.map((e) => e.vendorType)])].sort(), "", { placeholder: "All vendor types" }));
+  keep("#f-date", options(projectDates().map((d) => ({ value: d, label: fmtDay(d) })), "", { placeholder: t("All dates") }));
+  keep("#f-type", options([...new Set([...vendorTypes(), ...state.entries.map((e) => e.vendorType)])].sort(), "", { placeholder: t("All vendor types") }));
 }
 
 function filteredEntries() {
@@ -392,9 +396,9 @@ function renderEntries() {
   list.forEach((e) => ((byDate[e.date] ??= []).push(e)));
   $("#entries").innerHTML = Object.entries(byDate).map(([date, items]) => `
     <section class="day-group">
-      <div class="day-head"><span>${fmtDay(date)}</span><span class="muted small">${items.length} item${items.length > 1 ? "s" : ""}</span></div>
+      <div class="day-head"><span>${fmtDay(date)}</span><span class="muted small">${t(items.length > 1 ? "{n} items" : "{n} item", { n: items.length })}</span></div>
       ${SLOTS.filter((s) => items.some((e) => e.slot === s)).map((slot) => `
-        <div class="slot-head">${slot}</div>
+        <div class="slot-head">${t(slot)}</div>
         <div class="items">${items.filter((e) => e.slot === slot).map(entryCard).join("")}</div>`).join("")}
     </section>`).join("");
 }
@@ -402,7 +406,11 @@ function renderEntries() {
 function entryCard(e) {
   const s = entryStatus(e);
   const short = shortfall(e);
-  const flagsDisabled = profile.isAdmin ? "" : "disabled";
+  const flag = (name, label) => {
+    const can = canTick(e, name);
+    const title = can ? "" : e[name] ? t("Only admin can untick") : "";
+    return `<label class="check" title="${title}"><input type="checkbox" data-flag="${name}" ${e[name] ? "checked" : ""} ${can ? "" : "disabled"}/> <span>${t(label)}</span>${!can && e[name] && !profile.isAdmin ? " 🔒" : ""}</label>`;
+  };
   return `
     <article class="item st-${s}" data-id="${e.id}">
       <div class="item-top">
@@ -410,27 +418,27 @@ function entryCard(e) {
           <div class="item-name">${esc(e.vendorName)}</div>
           <div class="xs muted">${esc(e.vendorType)}</div>
         </div>
-        <span class="badge ${STATUS_INFO[s].badge}">${STATUS_INFO[s].label}</span>
+        <span class="badge ${STATUS_INFO[s].badge}">${t(STATUS_INFO[s].label)}</span>
       </div>
       <div class="item-qty">
-        <div class="qty-box"><div class="label">Ordered qty</div><div class="val">${fmtNum(e.orderedQty)} <span class="xs muted">${esc(e.unit)}</span></div></div>
+        <div class="qty-box"><div class="label">${t("Ordered qty")}</div><div class="val">${fmtNum(e.orderedQty)} <span class="xs muted">${esc(e.unit)}</span></div></div>
         <div class="qty-box">
-          <div class="label">Received qty${short > 0 ? ` <span style="color:var(--warn)">−${fmtNum(short)}</span>` : ""}</div>
+          <div class="label">${t("Received qty")}${short > 0 ? ` <span style="color:var(--warn)">−${fmtNum(short)}</span>` : ""}</div>
           ${canEditReceived(e)
-            ? `<input type="number" min="0" step="any" inputmode="decimal" data-received value="${esc(e.receivedQty || "")}" placeholder="0" aria-label="Received quantity" />`
+            ? `<input type="number" min="0" step="any" inputmode="decimal" data-received value="${esc(e.receivedQty || "")}" placeholder="0" aria-label="${t("Received quantity")}" />`
             : `<div class="val">${fmtNum(e.receivedQty)} <span class="xs muted">${esc(e.unit)}</span></div>`}
         </div>
       </div>
       <div class="item-flags">
-        <label class="check" title="${profile.isAdmin ? "" : "Set by admin"}"><input type="checkbox" data-flag="ordered" ${e.ordered ? "checked" : ""} ${flagsDisabled}/> <span>Ordered</span></label>
-        <label class="check" title="${profile.isAdmin ? "" : "Set by admin"}"><input type="checkbox" data-flag="received" ${e.received ? "checked" : ""} ${flagsDisabled}/> <span>Received</span></label>
+        ${flag("ordered", "Ordered")}
+        ${flag("received", "Received")}
       </div>
       ${e.remark ? `<p class="small mt">💬 ${esc(e.remark)}</p>` : ""}
       <div class="item-foot">
         <span class="xs muted">${esc(e.updatedByName || e.createdByName || "")} · ${fmtDateTime(e.updatedAt || e.createdAt)}</span>
         <span class="gap">
-          ${canEdit() ? `<button class="icon-btn" data-action="edit" title="Edit">✎</button>` : ""}
-          ${canDelete(e) ? `<button class="icon-btn danger" data-action="delete" title="Delete">🗑</button>` : ""}
+          ${canEdit() ? `<button class="icon-btn" data-action="edit" title="${t("Edit")}">✎</button>` : ""}
+          ${canDelete(e) ? `<button class="icon-btn danger" data-action="delete" title="${t("Delete")}">🗑</button>` : ""}
         </span>
       </div>
     </article>`;
@@ -443,8 +451,17 @@ async function onEntryChange(ev) {
   try {
     if (ev.target.matches("[data-received]")) {
       await save(updateEntry(pid, e.id, { receivedQty: num(ev.target.value) }, profile), "Received qty saved");
-    } else if (ev.target.matches("[data-flag]") && profile.isAdmin) {
+    } else if (ev.target.matches("[data-flag]")) {
       const flag = ev.target.dataset.flag;
+      // Staff can only tick (never untick), and are asked first because it can't be undone by them.
+      if (!profile.isAdmin) {
+        if (!ev.target.checked || e[flag]) { ev.target.checked = !!e[flag]; return; }
+        const label = flag === "ordered" ? "Ordered" : "Received";
+        if (!(await confirmDialog(t("Mark as \"{flag}\"? Once ticked, only an admin can untick it.", { flag: t(label) }), { okLabel: "Tick", danger: false }))) {
+          ev.target.checked = false;
+          return;
+        }
+      }
       const patch = { [flag]: ev.target.checked };
       if (flag === "received" && ev.target.checked) {
         patch.ordered = true;
@@ -463,7 +480,8 @@ async function onEntryClick(ev) {
   const e = state.entries.find((x) => x.id === btn.closest("[data-id]").dataset.id);
   if (btn.dataset.action === "edit") editEntry(e);
   if (btn.dataset.action === "delete") {
-    if (!(await confirmDialog(`Delete ${e.vendorName} · ${fmtNum(e.orderedQty)} ${e.unit} on ${fmtDay(e.date)} ${e.slot}?`))) return;
+    if (!(await confirmDialog(t("Delete {vendor} · {qty} {unit} on {day} {slot}?",
+      { vendor: e.vendorName, qty: fmtNum(e.orderedQty), unit: e.unit, day: fmtDay(e.date), slot: t(e.slot) })))) return;
     try {
       await save(deleteEntry(pid, e.id), "Item deleted");
     } catch (err) {
@@ -476,7 +494,9 @@ function editEntry(e) {
   const { el } = openModal({
     title: "Edit item",
     wide: true,
-    body: `${!canEditDetails(e) ? `<div class="banner banner-info">This item is already ordered — only received quantity${canEditReceived(e) ? "" : " (locked: already received)"} and remark can be changed.</div>` : ""}${entryFields(e, "edit")}`,
+    body: `${!canEditDetails(e) ? `<div class="banner banner-info">${t(canEditReceived(e)
+      ? "This item is already ordered — only received quantity and remark can be changed."
+      : "This item is already ordered and received — only the remark can be changed.")}</div>` : ""}${entryFields(e, "edit")}`,
     onSubmit: async (fd) => {
       let patch;
       if (canEditDetails(e)) {
@@ -490,6 +510,14 @@ function editEntry(e) {
       if (profile.isAdmin) {
         patch.ordered = fd.get("ordered") === "on";
         patch.received = fd.get("received") === "on";
+      } else {
+        // Staff: ticks can only go from unticked to ticked.
+        if (!e.ordered && fd.get("ordered") === "on") patch.ordered = true;
+        if (!e.received && fd.get("received") === "on") {
+          patch.received = true;
+          patch.ordered = true;
+          if (!num(patch.receivedQty ?? e.receivedQty)) patch.receivedQty = num(e.orderedQty);
+        }
       }
       await save(updateEntry(pid, e.id, patch, profile), "Item updated");
     },
@@ -675,19 +703,19 @@ function renderSummary() {
 
   el.innerHTML = `
     <div class="grid-4 mb">
-      ${Object.entries(counts).map(([k, v]) => `<div class="card stat"><div class="stat-label">${STATUS_INFO[k].label}</div><div class="stat-value">${v}</div></div>`).join("")}
+      ${Object.entries(counts).map(([k, v]) => `<div class="card stat"><div class="stat-label">${t(STATUS_INFO[k].label)}</div><div class="stat-value">${v}</div></div>`).join("")}
     </div>
-    <h3 class="section-title">Totals by vendor</h3>
+    <h3 class="section-title">${t("Totals by vendor")}</h3>
     <div class="table-wrap"><table class="table responsive">
-      <thead><tr><th>Vendor type</th><th>Vendor</th><th class="num">Entries</th><th class="num">Ordered</th><th class="num">Received</th><th class="num">Short</th></tr></thead>
+      <thead><tr><th>${t("Vendor type")}</th><th>${t("Vendor")}</th><th class="num">${t("Entries")}</th><th class="num">${t("Ordered")}</th><th class="num">${t("Received")}</th><th class="num">${t("Short")}</th></tr></thead>
       <tbody>${rows.map((g) => `
         <tr>
-          <td data-label="Type">${esc(g.type)}</td>
-          <td data-label="Vendor" class="strong">${esc(g.name)}</td>
-          <td data-label="Entries" class="num">${g.n}</td>
-          <td data-label="Ordered" class="num">${fmtNum(g.ord)} ${esc(g.unit)}</td>
-          <td data-label="Received" class="num">${fmtNum(g.rec)} ${esc(g.unit)}</td>
-          <td data-label="Short" class="num" style="color:${g.short > 0 ? "var(--warn)" : "inherit"}">${fmtNum(g.short)} ${esc(g.unit)}</td>
+          <td data-label="${t("Vendor type")}">${esc(g.type)}</td>
+          <td data-label="${t("Vendor")}" class="strong">${esc(g.name)}</td>
+          <td data-label="${t("Entries")}" class="num">${g.n}</td>
+          <td data-label="${t("Ordered")}" class="num">${fmtNum(g.ord)} ${esc(g.unit)}</td>
+          <td data-label="${t("Received")}" class="num">${fmtNum(g.rec)} ${esc(g.unit)}</td>
+          <td data-label="${t("Short")}" class="num" style="color:${g.short > 0 ? "var(--warn)" : "inherit"}">${fmtNum(g.short)} ${esc(g.unit)}</td>
         </tr>`).join("")}
       </tbody></table></div>`;
 }

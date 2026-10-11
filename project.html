@@ -15,15 +15,15 @@
       <div class="page" id="page">
         <div id="blocked" hidden></div>
         <div id="project-body">
-        <div id="project-head"><div class="loading">Loading project…</div></div>
+        <div id="project-head"><div class="loading" data-i18n>Loading project…</div></div>
         <div id="freeze-banner" class="banner mt" hidden></div>
 
         <nav class="tabs mt">
-          <button class="tab active" data-tab="items">Items <span class="count" id="count-items">0</span></button>
+          <button class="tab active" data-tab="items"><span data-i18n>Items</span> <span class="count" id="count-items">0</span></button>
           <!-- PHOTOS DISABLED: un-comment to bring back the Photos tab
           <button class="tab" data-tab="photos">Photos <span class="count" id="count-photos">0</span></button>
           -->
-          <button class="tab" data-tab="summary">Summary</button>
+          <button class="tab" data-tab="summary" data-i18n>Summary</button>
         </nav>
 
         <section data-panel="items">
@@ -31,21 +31,21 @@
           <div class="toolbar">
             <select id="f-date"></select>
             <select id="f-slot">
-              <option value="">All times</option>
-              <option>Morning</option>
-              <option>Afternoon</option>
-              <option>Evening</option>
-              <option>Night</option>
+              <option value="" data-i18n>All times</option>
+              <option value="Morning" data-i18n>Morning</option>
+              <option value="Afternoon" data-i18n>Afternoon</option>
+              <option value="Evening" data-i18n>Evening</option>
+              <option value="Night" data-i18n>Night</option>
             </select>
             <select id="f-type"></select>
             <select id="f-status">
-              <option value="">Any status</option>
-              <option value="pending">Not ordered</option>
-              <option value="ordered">Ordered</option>
-              <option value="short">Short received</option>
-              <option value="received">Received</option>
+              <option value="" data-i18n>Any status</option>
+              <option value="pending" data-i18n>Not ordered</option>
+              <option value="ordered" data-i18n>Ordered</option>
+              <option value="short" data-i18n>Short received</option>
+              <option value="received" data-i18n>Received</option>
             </select>
-            <div class="search"><input id="f-search" type="search" placeholder="Search vendor, remark…" /></div>
+            <div class="search"><input id="f-search" type="search" placeholder="Search vendor, remark…" data-i18n-placeholder /></div>
           </div>
           <div id="entries"></div>
         </section>

@@ -2,6 +2,7 @@
 import { esc, $ } from "./ui.js";
 import { logout, ROLES } from "./auth.js";
 import { APP_NAME } from "./firebase-config.js";
+import { t, forceEnglish, applyI18n, langToggleHTML, bindLangToggle } from "./i18n.js";
 
 const ICONS = {
   dashboard: '<path d="M3 13h8V3H3zm0 8h8v-6H3zm10 0h8V11h-8zm0-18v6h8V3z"/>',
@@ -31,6 +32,8 @@ const ADMIN_NAV = [
 const USER_NAV = [["projects", "My Projects", "my-projects.html"]];
 
 export function renderShell(profile, { active, title }) {
+  // Hindi is offered on the staff side only; admin screens stay in English.
+  if (profile.isAdmin) forceEnglish();
   const nav = profile.isAdmin ? ADMIN_NAV : USER_NAV;
   const app = $("#app");
   const initials = (profile.name || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -43,13 +46,13 @@ export function renderShell(profile, { active, title }) {
         ${nav
           .map(
             ([key, label, href]) =>
-              `<a href="${href}" class="nav-link ${active === key ? "active" : ""}">${icon(key)}<span>${label}</span></a>`
+              `<a href="${href}" class="nav-link ${active === key ? "active" : ""}">${icon(key)}<span>${t(label)}</span></a>`
           )
           .join("")}
       </nav>
       <div class="nav-foot">
-        <a href="profile.html" class="nav-link ${active === "profile" ? "active" : ""}">${icon("profile")}<span>My Profile</span></a>
-        <button class="nav-link" id="logout-btn">${icon("logout")}<span>Log out</span></button>
+        <a href="profile.html" class="nav-link ${active === "profile" ? "active" : ""}">${icon("profile")}<span>${t("My Profile")}</span></a>
+        <button class="nav-link" id="logout-btn">${icon("logout")}<span>${t("Log out")}</span></button>
       </div>
     </aside>
     <div class="scrim" id="scrim"></div>`
@@ -61,9 +64,10 @@ export function renderShell(profile, { active, title }) {
       <button class="icon-btn menu-btn" id="menu-btn" aria-label="Menu">
         <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" fill="currentColor"/></svg>
       </button>
-      <h1 class="topbar-title">${esc(title)}</h1>
-      <span class="net-status" id="net-status" hidden>Offline</span>
-      <a href="profile.html" class="avatar" title="${esc(profile.name)} · ${esc(ROLES[profile.role])}">${esc(initials)}</a>
+      <h1 class="topbar-title">${esc(t(title))}</h1>
+      <span class="net-status" id="net-status" hidden>${t("Offline")}</span>
+      ${profile.isAdmin ? "" : langToggleHTML()}
+      <a href="profile.html" class="avatar" title="${esc(profile.name)} · ${esc(t(ROLES[profile.role]))}">${esc(initials)}</a>
     </header>`
   );
 
@@ -78,6 +82,8 @@ export function renderShell(profile, { active, title }) {
   window.addEventListener("offline", updateNet);
   updateNet();
 
-  document.title = `${title} · ${APP_NAME}`;
+  bindLangToggle(app);
+  applyI18n(document);
+  document.title = `${t(title)} · ${APP_NAME}`;
   document.body.classList.remove("booting");
 }
