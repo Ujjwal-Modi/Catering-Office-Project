@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// Photo files. Metadata (and per-project access) is enforced in Firestore;
+// here we only allow active users, images, and files under 50 MB (originals, no compression).
+service firebase.storage {
+  match /b/{bucket}/o {
+    function activeUser() {
+      return request.auth != null
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.active == true;
+    }
+
+    match /projects/{pid}/photos/{file} {
+      allow read: if activeUser();
+      allow create: if activeUser()
+        && request.resource.size < 50 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if activeUser();
+      allow update: if false;
+    }
+
+    match /{everythingElse=**} {
+      allow read, write: if false;
+    }
+  }
+}

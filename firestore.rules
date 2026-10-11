@@ -1,0 +1,135 @@
+rules_version = '2';
+
+// =====================================================================
+//  Catering Office — Firestore security rules
+//  Roles live in /users/{uid}.role : "root" | "admin" | "user"
+//  These rules are the real access control — the UI only mirrors them.
+// =====================================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function signedIn()   { return request.auth != null; }
+    function userPath(uid){ return /databases/$(database)/documents/users/$(uid); }
+    function me()         { return get(userPath(request.auth.uid)).data; }
+    function isActive()   { return signedIn() && exists(userPath(request.auth.uid)) && me().active == true; }
+    function isAdmin()    { return isActive() && me().role in ['root', 'admin']; }
+    function isRoot()     { return isActive() && me().role == 'root'; }
+    function setupPath()  { return /databases/$(database)/documents/meta/setup; }
+    function isFirstSetup() {
+      return signedIn() && !exists(setupPath())
+        && getAfter(setupPath()).data.rootUid == request.auth.uid;
+    }
+    function changed()    { return request.resource.data.diff(resource.data).affectedKeys(); }
+
+    function project(pid) { return get(/databases/$(database)/documents/projects/$(pid)).data; }
+    function assigned(pid){ return request.auth.uid in project(pid).assignedUsers; }
+    // Staff: can open unless "locked"; can edit only when "none" (open).
+    function canView(pid) { return isAdmin() || (isActive() && assigned(pid) && project(pid).freeze != 'locked'); }
+    function canWrite(pid){ return isAdmin() || (isActive() && assigned(pid) && project(pid).freeze == 'none'); }
+    function inProjectDates(pid, d) { return d >= project(pid).startDate && d <= project(pid).endDate; }
+
+    // ---------- first-time setup ----------
+    match /meta/setup {
+      allow read: if true;   // login page checks whether setup is done
+      allow create: if signedIn()
+        && request.resource.data.rootUid == request.auth.uid
+        && getAfter(userPath(request.auth.uid)).data.role == 'root';
+      allow update, delete: if false;
+    }
+
+    // ---------- users ----------
+    match /users/{uid} {
+      allow read: if (signedIn() && request.auth.uid == uid) || isAdmin();
+
+      allow create: if
+        // admins create admins/staff (never another root)
+        (isAdmin() && request.resource.data.role in ['admin', 'user'])
+        // or the very first root admin, written together with /meta/setup
+        || (request.auth.uid == uid && request.resource.data.role == 'root' && isFirstSetup());
+
+      allow update: if
+        // admins manage everyone except the root admin
+        (isAdmin() && resource.data.role != 'root' && request.resource.data.role in ['admin', 'user'])
+        // root edits own profile but can't demote / deactivate itself
+        || (isRoot() && request.auth.uid == uid && request.resource.data.role == 'root' && request.resource.data.active == true)
+        // anyone edits own name/phone
+        || (isActive() && request.auth.uid == uid && changed().hasOnly(['name', 'phone', 'updatedAt']));
+
+      allow delete: if false;   // deactivate instead (keeps history)
+    }
+
+    // ---------- masters & vendors ----------
+    match /masters/{doc} {
+      allow read: if isActive();
+      allow write: if isAdmin() || isFirstSetup();
+    }
+
+    match /vendors/{id} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+
+    // Rates: admins only (staff never see prices)
+    match /vendorPrivate/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /payments/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---------- projects ----------
+    match /projects/{pid} {
+      // Staff can list their assigned projects (locked ones show as locked in the list).
+      allow read: if isAdmin() || (isActive() && request.auth.uid in resource.data.assignedUsers);
+      allow create, update: if isAdmin()
+        && request.resource.data.freeze in ['none', 'readonly', 'locked']
+        && request.resource.data.endDate >= request.resource.data.startDate;
+      allow delete: if isAdmin();
+
+      // Items
+      match /entries/{eid} {
+        allow read: if canView(pid);
+
+        allow create: if isAdmin() || (
+          canWrite(pid)
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.ordered == false
+          && request.resource.data.received == false
+          && request.resource.data.slot in ['Morning', 'Afternoon', 'Evening', 'Night']
+          && request.resource.data.orderedQty is number && request.resource.data.orderedQty > 0
+          && inProjectDates(pid, request.resource.data.date)
+        );
+
+        allow update: if isAdmin() || (
+          canWrite(pid)
+          // staff can never touch the Ordered / Received ticks
+          && changed().hasOnly(['vendorId', 'vendorName', 'vendorType', 'unit', 'date', 'slot',
+                                'orderedQty', 'receivedQty', 'remark', 'updatedAt', 'updatedBy', 'updatedByName'])
+          // once ordered, item details are fixed
+          && (resource.data.ordered == false
+              || !changed().hasAny(['vendorId', 'vendorName', 'vendorType', 'unit', 'date', 'slot', 'orderedQty']))
+          // once received, received qty is fixed
+          && (resource.data.received == false || !changed().hasAny(['receivedQty']))
+          && request.resource.data.slot in ['Morning', 'Afternoon', 'Evening', 'Night']
+          && inProjectDates(pid, request.resource.data.date)
+        );
+
+        allow delete: if isAdmin() || (
+          canWrite(pid) && resource.data.createdBy == request.auth.uid && resource.data.ordered == false
+        );
+      }
+
+      // Photos
+      match /photos/{phid} {
+        allow read: if canView(pid);
+        allow create: if canWrite(pid) && request.resource.data.uploadedBy == request.auth.uid;
+        allow update: if isAdmin() || (
+          canWrite(pid) && resource.data.uploadedBy == request.auth.uid && changed().hasOnly(['remark', 'bucket'])
+        );
+        allow delete: if isAdmin() || (canWrite(pid) && resource.data.uploadedBy == request.auth.uid);
+      }
+    }
+  }
+}

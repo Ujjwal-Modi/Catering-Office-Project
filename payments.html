@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>Payments · Catering Office</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="booting">
+  <div class="app" id="app">
+    <main class="main">
+      <div class="page" id="page">
+        <div class="page-head">
+          <h2>Vendor payments</h2>
+          <div class="gap">
+            <button class="btn" id="export-btn">⬇ Excel</button>
+            <button class="btn btn-primary" id="new-btn">+ Record payment</button>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <select id="vendor-filter"></select>
+          <select id="project-filter"></select>
+          <input id="from" type="date" title="From date" />
+          <input id="to" type="date" title="To date" />
+        </div>
+
+        <div class="grid-3 mb" id="totals"></div>
+        <div class="banner banner-warn" id="rate-warning" hidden></div>
+
+        <h3 class="section-title">Balance by vendor</h3>
+        <div id="ledger"><div class="loading">Loading…</div></div>
+
+        <h3 class="section-title">Payment history</h3>
+        <div id="payments"></div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="js/pages/payments.js"></script>
+</body>
+</html>

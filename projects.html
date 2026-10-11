@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>Projects · Catering Office</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="booting">
+  <div class="app" id="app">
+    <main class="main">
+      <div class="page" id="page">
+        <div class="page-head">
+          <div>
+            <h2>Projects</h2>
+            <span class="small muted" id="count"></span>
+          </div>
+          <button class="btn btn-primary" id="new-btn">+ New project</button>
+        </div>
+
+        <div class="toolbar">
+          <div class="search"><input id="search" type="search" placeholder="Search name, venue, event…" /></div>
+          <select id="status-filter">
+            <option value="">All dates</option>
+            <option value="ongoing">Ongoing</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="completed">Completed</option>
+          </select>
+          <select id="freeze-filter">
+            <option value="">Any access</option>
+            <option value="none">Open</option>
+            <option value="readonly">View only</option>
+            <option value="locked">Locked</option>
+          </select>
+        </div>
+
+        <div class="grid-3" id="list"><div class="loading">Loading…</div></div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="js/pages/projects.js"></script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>Vendors · Catering Office</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="booting">
+  <div class="app" id="app">
+    <main class="main">
+      <div class="page" id="page">
+        <div class="page-head">
+          <div>
+            <h2>Vendor master</h2>
+            <span class="small muted" id="count"></span>
+          </div>
+          <button class="btn btn-primary" id="new-btn">+ Add vendor</button>
+        </div>
+
+        <div class="toolbar">
+          <div class="search"><input id="search" type="search" placeholder="Search name, phone…" /></div>
+          <select id="type-filter"></select>
+          <select id="status-filter">
+            <option value="">Active &amp; inactive</option>
+            <option value="active" selected>Active only</option>
+            <option value="inactive">Inactive only</option>
+          </select>
+        </div>
+
+        <div id="list"><div class="loading">Loading…</div></div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="js/pages/vendors.js"></script>
+</body>
+</html>

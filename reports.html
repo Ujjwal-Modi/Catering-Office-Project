@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>Reports · Catering Office</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="booting">
+  <div class="app" id="app">
+    <main class="main">
+      <div class="page" id="page">
+        <form id="report-form" class="card no-print" novalidate>
+          <div class="card-head"><h3>Quick reports</h3></div>
+          <div class="preset-row" id="presets"></div>
+
+          <div class="form-grid cols-3">
+            <div class="field span-all">
+              <span class="label">Report type</span>
+              <div class="segmented">
+                <input type="radio" id="v-details" name="view" value="details" checked /><label for="v-details">Item details</label>
+                <input type="radio" id="v-summary" name="view" value="summary" /><label for="v-summary">Summary</label>
+                <input type="radio" id="v-projects" name="view" value="projects" /><label for="v-projects">Projects</label>
+                <!-- PHOTOS DISABLED: un-comment to bring back the Photos report
+                <input type="radio" id="v-photos" name="view" value="photos" /><label for="v-photos">Photos</label>
+                -->
+              </div>
+            </div>
+
+            <div class="field span-all" id="group-wrap" hidden>
+              <span class="label">Group summary by (in this order)</span>
+              <div class="group-by" id="group-by"></div>
+            </div>
+
+            <div class="field">
+              <label for="f-projects">Projects <a href="#" id="clear-projects" class="xs">(clear = all)</a></label>
+              <select id="f-projects" multiple class="ms-select"></select>
+              <span class="hint">Ctrl/⌘-click or long-press to pick several.</span>
+            </div>
+
+            <div class="field">
+              <label for="quick-range">Date range</label>
+              <select id="quick-range">
+                <option value="">Custom</option>
+                <option value="today">Today</option>
+                <option value="week">This week</option>
+                <option value="month">This month</option>
+                <option value="lastmonth">Last month</option>
+                <option value="year">This year</option>
+              </select>
+              <div class="grid-2" style="gap:.5rem">
+                <input id="f-from" type="date" title="From" />
+                <input id="f-to" type="date" title="To" />
+              </div>
+            </div>
+
+            <div class="field entry-filter">
+              <label for="f-type">Vendor type</label>
+              <select id="f-type"></select>
+              <label for="f-vendor">Vendor</label>
+              <select id="f-vendor"></select>
+            </div>
+
+            <div class="field entry-filter">
+              <label for="f-slot">Time</label>
+              <select id="f-slot"></select>
+            </div>
+
+            <div class="field entry-filter">
+              <label for="f-status">Status</label>
+              <select id="f-status"></select>
+            </div>
+
+            <!-- PHOTOS DISABLED: un-comment to bring back the photo bucket filter
+            <div class="field" id="bucket-wrap" hidden>
+              <label for="f-bucket">Photo bucket</label>
+              <select id="f-bucket"></select>
+            </div>
+            -->
+
+            <div class="field">
+              <label for="f-user">Entered / uploaded by</label>
+              <input id="f-user" placeholder="Staff name (optional)" />
+            </div>
+          </div>
+
+          <div class="gap mt" style="justify-content:flex-end">
+            <button type="button" class="btn" id="btn-workbook" title="Every report as a separate sheet">📚 Complete workbook (Excel)</button>
+            <button type="submit" class="btn btn-primary" id="btn-generate">Generate report</button>
+          </div>
+        </form>
+
+        <section class="card mt" id="output-card" hidden>
+          <div class="print-only" id="print-head"></div>
+          <div class="between mb no-print">
+            <div>
+              <h3 id="out-title"></h3>
+              <div class="report-meta" id="out-meta"></div>
+            </div>
+            <div class="gap">
+              <button class="btn btn-sm" id="btn-xlsx">⬇ Excel</button>
+              <button class="btn btn-sm" id="btn-csv">⬇ CSV</button>
+              <button class="btn btn-sm" id="btn-pdf">⬇ PDF</button>
+              <!-- PHOTOS DISABLED: <button class="btn btn-sm" id="btn-zip" hidden>⬇ Photos ZIP</button> -->
+              <button class="btn btn-sm" id="btn-print">🖨 Print</button>
+            </div>
+          </div>
+          <div id="output"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="js/pages/reports.js"></script>
+</body>
+</html>

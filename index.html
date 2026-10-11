@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>Sign in · Catering Office</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <main class="auth-page">
+    <div class="auth-card">
+      <div class="auth-logo">🍽</div>
+      <h1 id="app-name">Catering Office</h1>
+      <p class="muted">Sign in to continue</p>
+
+      <div id="notice" class="banner banner-warn" hidden></div>
+
+      <form id="login-form" novalidate>
+        <div class="field">
+          <label for="login-id">Email or username</label>
+          <input id="login-id" name="loginId" autocomplete="username" autocapitalize="none" required />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required />
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+      </form>
+
+      <div class="auth-foot">
+        <a href="#" id="forgot-link">Forgot password?</a>
+        <p id="setup-link" class="mt" hidden>
+          First time here? <a href="setup.html">Create the root admin</a>
+        </p>
+      </div>
+    </div>
+  </main>
+  <script type="module" src="js/pages/login.js"></script>
+</body>
+</html>
