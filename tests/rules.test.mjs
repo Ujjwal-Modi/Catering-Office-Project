@@ -87,6 +87,16 @@ await t("locked: staff cannot read photos", () => assertFails(getDocs(collection
 await t("locked: project still listed for staff", () => assertSucceeds(getDoc(doc(db("s1"), "projects/p1"))));
 await t("bad freeze value rejected", () => assertFails(updateDoc(doc(db("adm"), "projects/p1"), { freeze: "maybe" })));
 
+// ---- per-staff access
+await setDoc(doc(db("adm"), "projects/p3"), { ...P, assignedUsers: ["s1", "s2"], staffAccess: { s1: "none", s2: "readonly" } });
+await t("per-staff: open staff can add", () => assertSucceeds(setDoc(doc(db("s1"), "projects/p3/entries/a1"), E)));
+await t("per-staff: view-only staff can read", () => assertSucceeds(getDocs(collection(db("s2"), "projects/p3/entries"))));
+await t("per-staff: view-only staff cannot add", () => assertFails(setDoc(doc(db("s2"), "projects/p3/entries/a2"), { ...E, createdBy: "s2" })));
+await t("admin changes one staff's access", () => assertSucceeds(updateDoc(doc(db("adm"), "projects/p3"), { "staffAccess.s1": "locked" })));
+await t("per-staff: locked staff cannot read items", () => assertFails(getDocs(collection(db("s1"), "projects/p3/entries"))));
+await t("per-staff: other staff unaffected", () => assertSucceeds(getDocs(collection(db("s2"), "projects/p3/entries"))));
+await t("bad per-staff value rejected", () => assertFails(updateDoc(doc(db("adm"), "projects/p3"), { "staffAccess.s2": "maybe" })));
+
 // ---- payments & deactivation
 await t("admin records payment", () => assertSucceeds(setDoc(doc(db("adm"), "payments/x"), { vendorId: "v1", amount: 100, date: "2026-10-11" })));
 await t("staff cannot read payments", () => assertFails(getDocs(collection(db("s1"), "payments"))));

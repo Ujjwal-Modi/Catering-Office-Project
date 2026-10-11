@@ -15,7 +15,7 @@ Built with plain **HTML + CSS + JavaScript** (no build step) on **Firebase** (Au
 - **Admins**: full access. Can create other admins and staff.
 - **Staff**: see only the projects assigned to them.
 
-**Projects (admin)**: dates, name, venue, event type, pax, contact, remark. You can assign one or more staff. Each project has a staff access mode:
+**Projects (admin)**: dates, name, venue, event type, pax, contact, remark. You can assign one or more staff, and set the access **for each staff member separately** (in the project form, or straight from the project card):
 - **Open**: staff can add and edit.
 - **View only**: staff can open the project but can't edit anything.
 - **Locked**: staff can't open it at all.
@@ -161,7 +161,7 @@ tests/              Security-rule tests (run with the Firebase emulator)
 | `masters/lists` | vendorTypes[], units[], eventTypes[], photoBuckets[] |
 | `vendors/{id}` | type, name, phone, unit, gstin, notes, active |
 | `vendorPrivate/{vendorId}` | rate (admins only) |
-| `projects/{id}` | name, startDate, endDate, venue, eventType, pax, contact, remark, assignedUsers[], freeze |
+| `projects/{id}` | name, startDate, endDate, venue, eventType, pax, contact, remark, assignedUsers[], staffAccess {uid: none/readonly/locked}, freeze (old project-wide setting, used only as a fallback) |
 | `projects/{id}/entries/{id}` | vendorId, vendorName, vendorType, unit, date, slot, orderedQty, receivedQty, ordered, received, remark, createdBy… |
 | `projects/{id}/photos/{id}` | bucket, remark, date, url, path, uploadedBy… |
 | `payments/{id}` | vendorId, projectId, date, amount, mode, reference, note |

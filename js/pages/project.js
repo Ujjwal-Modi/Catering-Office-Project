@@ -3,13 +3,14 @@ import { requireAuth } from "../auth.js";
 import { PHOTOS_ENABLED } from "../firebase-config.js";
 import { renderShell } from "../layout.js";
 import {
-  watchProject, watchEntries, watchPhotos, listVendors, getMasters, setFreeze,
+  watchProject, watchEntries, watchPhotos, listVendors, getMasters, listUsers,
   addEntry, updateEntry, deleteEntry, uploadPhoto, updatePhoto, deletePhoto,
 } from "../data.js";
 import { entryStatus, shortfall, STATUS_INFO } from "../metrics.js";
 import {
   $, $$, esc, num, fmtNum, toast, errorText, openModal, confirmDialog, options, debounce, emptyState, save,
   SLOTS, FREEZE, datesBetween, fmtDate, fmtDay, fmtDateTime, rangeLabel, todayISO, qs, projectStatus, STATUS_BADGE,
+  accessFor, accessBadges,
 } from "../ui.js";
 
 const pid = qs("id");
@@ -17,7 +18,7 @@ const profile = await requireAuth();
 renderShell(profile, { active: "projects", title: "Project" });
 
 const state = {
-  project: null, entries: [], photos: [], vendors: [], masters: {},
+  project: null, entries: [], photos: [], vendors: [], masters: {}, users: [],
   tab: "items", bucket: "", unsub: [], pendingRender: false, started: false,
 };
 
@@ -31,7 +32,9 @@ if (!pid) {
 
 async function init() {
   try {
-    [state.vendors, state.masters] = await Promise.all([listVendors(), getMasters()]);
+    [state.vendors, state.masters, state.users] = await Promise.all([
+      listVendors(), getMasters(), profile.isAdmin ? listUsers() : [],
+    ]);
   } catch (err) {
     return fail(errorText(err));
   }
@@ -40,7 +43,7 @@ async function init() {
     state.project = p;
     if (!p) return fail("Project not found or you don't have access.");
     if (!profile.isAdmin && !(p.assignedUsers || []).includes(profile.uid)) return fail("This project is not assigned to you.");
-    if (!profile.isAdmin && p.freeze === "locked") {
+    if (!profile.isAdmin && myAccess() === "locked") {
       stopData();
       return fail("🔒 This project is locked by admin. You can't open it right now.");
     }
@@ -76,8 +79,11 @@ function fail(msg) {
   $("#blocked").innerHTML = `${emptyState(msg, "🚫")}<p class="right"><a class="btn" href="${profile.isAdmin ? "projects.html" : "my-projects.html"}">← Back to projects</a></p>`;
 }
 
+/** This staff member's own access to the project (set per staff by admin). */
+const myAccess = () => accessFor(state.project, profile.uid);
+
 /** Can the current user add/edit anything in this project? */
-const canEdit = () => profile.isAdmin || (state.project?.freeze || "none") === "none";
+const canEdit = () => profile.isAdmin || myAccess() === "none";
 const canEditDetails = (e) => profile.isAdmin || (canEdit() && !e.ordered);
 const canEditReceived = (e) => profile.isAdmin || (canEdit() && !e.received);
 const canDelete = (e) => profile.isAdmin || (canEdit() && !e.ordered && e.createdBy === profile.uid);
@@ -87,7 +93,7 @@ const canManagePhoto = (p) => profile.isAdmin || (canEdit() && p.uploadedBy === 
 
 function renderHead() {
   const p = state.project;
-  const fz = p.freeze || "none";
+  const fz = profile.isAdmin ? "none" : myAccess();
   const st = projectStatus(p);
   document.title = p.name;
   $(".topbar-title").textContent = p.name;
@@ -96,14 +102,12 @@ function renderHead() {
     <div class="card">
       <div class="between">
         <div>
-          <div class="gap mb"><span class="badge ${STATUS_BADGE[st]}">${st}</span><span class="badge ${FREEZE[fz].badge}">${FREEZE[fz].label}</span></div>
+          <div class="gap mb"><span class="badge ${STATUS_BADGE[st]}">${st}</span>${profile.isAdmin ? ((p.assignedUsers || []).length ? accessBadges(p) : "") : `<span class="badge ${FREEZE[fz].badge}">${FREEZE[fz].label}</span>`}</div>
           <h2>${esc(p.name)}</h2>
         </div>
         ${profile.isAdmin ? `
           <div class="gap no-print">
-            <select id="freeze-select" title="Staff access" style="width:auto">
-              ${options(Object.entries(FREEZE).map(([value, f]) => ({ value, label: `Staff: ${f.label}` })), fz)}
-            </select>
+            <a class="btn" href="projects.html" title="Change staff access from the project's card or edit form">👥 Staff access</a>
             <a class="btn" href="reports.html?project=${p.id}">📊 Reports</a>
           </div>` : ""}
       </div>
@@ -117,24 +121,20 @@ function renderHead() {
       ${p.remark ? `<p class="small mt">${esc(p.remark)}</p>` : ""}
     </div>`;
 
-  $("#freeze-select")?.addEventListener("change", async (e) => {
-    try {
-      await setFreeze(pid, e.target.value);
-      toast("Access updated", "success");
-    } catch (err) {
-      toast(errorText(err), "error");
-    }
-  });
-
   const banner = $("#freeze-banner");
-  banner.hidden = canEdit() && fz === "none";
+  banner.hidden = true;
   if (!profile.isAdmin && fz === "readonly") {
-    banner.className = "banner banner-warn";
-    banner.textContent = "👁 This project is frozen by admin — you can view it but not make changes.";
-  } else if (profile.isAdmin && fz !== "none") {
     banner.hidden = false;
-    banner.className = "banner banner-info";
-    banner.textContent = `Staff currently see this project as "${FREEZE[fz].label}". Admins can still edit.`;
+    banner.className = "banner banner-warn";
+    banner.textContent = "👁 Admin has set this project to view only for you — you can view it but not make changes.";
+  } else if (profile.isAdmin) {
+    const name = (uid) => state.users.find((u) => u.uid === uid)?.name || "Removed user";
+    const restricted = (p.assignedUsers || []).filter((uid) => accessFor(p, uid) !== "none");
+    if (restricted.length) {
+      banner.hidden = false;
+      banner.className = "banner banner-info";
+      banner.textContent = `Restricted staff: ${restricted.map((uid) => `${name(uid)} (${FREEZE[accessFor(p, uid)].label})`).join(", ")}. Admins can still edit.`;
+    }
   }
 }
 

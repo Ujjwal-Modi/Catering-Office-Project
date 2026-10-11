@@ -24,9 +24,19 @@ service cloud.firestore {
 
     function project(pid) { return get(/databases/$(database)/documents/projects/$(pid)).data; }
     function assigned(pid){ return request.auth.uid in project(pid).assignedUsers; }
+    // Access is set per staff member in staffAccess { uid: mode }; older projects
+    // fall back to the project-wide `freeze` field.
+    function accessOf(pid) {
+      return project(pid).get('staffAccess', {}).get(request.auth.uid, project(pid).get('freeze', 'none'));
+    }
     // Staff: can open unless "locked"; can edit only when "none" (open).
-    function canView(pid) { return isAdmin() || (isActive() && assigned(pid) && project(pid).freeze != 'locked'); }
-    function canWrite(pid){ return isAdmin() || (isActive() && assigned(pid) && project(pid).freeze == 'none'); }
+    function canView(pid) { return isAdmin() || (isActive() && assigned(pid) && accessOf(pid) != 'locked'); }
+    function canWrite(pid){ return isAdmin() || (isActive() && assigned(pid) && accessOf(pid) == 'none'); }
+    function validAccess(d) {
+      return d.get('freeze', 'none') in ['none', 'readonly', 'locked']
+        && d.get('staffAccess', {}) is map
+        && d.get('staffAccess', {}).values().hasOnly(['none', 'readonly', 'locked']);
+    }
     function inProjectDates(pid, d) { return d >= project(pid).startDate && d <= project(pid).endDate; }
 
     // ---------- first-time setup ----------
@@ -84,7 +94,7 @@ service cloud.firestore {
       // Staff can list their assigned projects (locked ones show as locked in the list).
       allow read: if isAdmin() || (isActive() && request.auth.uid in resource.data.assignedUsers);
       allow create, update: if isAdmin()
-        && request.resource.data.freeze in ['none', 'readonly', 'locked']
+        && validAccess(request.resource.data)
         && request.resource.data.endDate >= request.resource.data.startDate;
       allow delete: if isAdmin();
 

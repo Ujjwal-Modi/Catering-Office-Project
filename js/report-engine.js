@@ -1,5 +1,5 @@
 /* Pure report logic: filtering, grouping and row building. No DOM, no Firebase. */
-import { num, fmtDate } from "./ui.js";
+import { num, fmtDate, accessSummary } from "./ui.js";
 import { entryStatus, shortfall, orderedValue, receivedValue, STATUS_INFO } from "./metrics.js";
 
 export const GROUP_FIELDS = {
@@ -137,7 +137,7 @@ export function projectRows(projectList, entries, photos, ctx) {
       Venue: p.venue || "",
       "Event Type": p.eventType || "",
       Pax: num(p.pax),
-      "Staff Access": { none: "Open", readonly: "View only", locked: "Locked" }[p.freeze || "none"],
+      "Staff Access": accessSummary(p),
       Items: mine.length,
       "Not Ordered": count("pending"),
       "Awaiting Delivery": count("ordered"),

@@ -8,6 +8,31 @@ export const FREEZE = {
   locked: { label: "Locked", badge: "badge-red" },
 };
 
+/** A staff member's access to a project: per-staff setting, falling back to the old project-wide one. */
+export const accessFor = (p, uid) => p?.staffAccess?.[uid] || p?.freeze || "none";
+
+/** Counts of assigned staff per access mode, e.g. { none: 2, readonly: 1, locked: 0 }. */
+export function accessCounts(p) {
+  const c = { none: 0, readonly: 0, locked: 0 };
+  (p?.assignedUsers || []).forEach((uid) => c[accessFor(p, uid)]++);
+  return c;
+}
+
+/** Short text such as "Open" or "2 open · 1 view only". */
+export function accessSummary(p) {
+  const c = accessCounts(p);
+  if (!c.readonly && !c.locked) return "Open";
+  return Object.entries(c).filter(([, n]) => n).map(([k, n]) => `${n} ${FREEZE[k].label.toLowerCase()}`).join(" · ");
+}
+
+/** Badges for the access summary (one "Open" badge when nobody is restricted). */
+export function accessBadges(p) {
+  const c = accessCounts(p);
+  if (!c.readonly && !c.locked) return `<span class="badge ${FREEZE.none.badge}">Open</span>`;
+  return Object.entries(c).filter(([, n]) => n)
+    .map(([k, n]) => `<span class="badge ${FREEZE[k].badge}">${n} ${FREEZE[k].label.toLowerCase()}</span>`).join("");
+}
+
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 

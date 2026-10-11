@@ -3,7 +3,7 @@ import { renderShell } from "../layout.js";
 import { listProjects, listVendors, listUsers, loadProjectData } from "../data.js";
 import { entryStatus, shortfall, STATUS_INFO } from "../metrics.js";
 import {
-  $, esc, emptyState, errorText, projectStatus, STATUS_BADGE, FREEZE, rangeLabel, todayISO, fmtDate, fmtNum, SLOTS, toISO,
+  $, esc, emptyState, errorText, projectStatus, STATUS_BADGE, accessBadges, rangeLabel, todayISO, fmtDate, fmtNum, SLOTS, toISO,
 } from "../ui.js";
 
 const profile = await requireAuth({ admin: true });
@@ -49,10 +49,9 @@ function renderProjects(ongoing, soon, entries) {
     const mine = entries.filter((e) => e.projectId === p.id);
     const pending = mine.filter((e) => entryStatus(e) === "pending").length;
     const st = projectStatus(p);
-    const fz = p.freeze || "none";
     return `
       <a class="card project-card" href="project.html?id=${p.id}">
-        <div class="gap"><span class="badge ${STATUS_BADGE[st]}">${st}</span><span class="badge ${FREEZE[fz].badge}">${FREEZE[fz].label}</span></div>
+        <div class="gap"><span class="badge ${STATUS_BADGE[st]}">${st}</span>${(p.assignedUsers || []).length ? accessBadges(p) : ""}</div>
         <h3 class="mt">${esc(p.name)}</h3>
         <div class="meta"><span>📅 ${rangeLabel(p)}</span>${p.venue ? `<span>📍 ${esc(p.venue)}</span>` : ""}${p.pax ? `<span>👥 ${fmtNum(p.pax)}</span>` : ""}</div>
         <p class="small mt">${mine.length} items · ${pending ? `<span class="badge badge-amber">${pending} not ordered</span>` : '<span class="muted">all ordered</span>'}</p>

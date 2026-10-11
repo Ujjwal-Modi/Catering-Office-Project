@@ -47,9 +47,21 @@ export const removeMasterItem = (kind, value) =>
 
 /* ============================ Users ============================ */
 
+const toUsers = (snap) =>
+  snap.docs.map(withId).map((u) => ({ ...u, uid: u.id })).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
 export async function listUsers() {
-  const snap = await getDocs(collection(db, "users"));
-  return snap.docs.map(withId).map((u) => ({ ...u, uid: u.id })).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  return toUsers(await getDocs(collection(db, "users")));
+}
+
+/**
+ * Live list. cb(list, ready): `ready` is false while only the (possibly empty)
+ * offline cache has answered, so pages can keep showing "Loading…" instead of
+ * an empty list until the server replies.
+ */
+export function watchUsers(cb, onError) {
+  return onSnapshot(collection(db, "users"), { includeMetadataChanges: true },
+    (s) => cb(toUsers(s), !s.metadata.fromCache || s.size > 0), onError);
 }
 
 /**
@@ -117,6 +129,16 @@ export async function listProjects() {
   return snap.docs.map(withId);
 }
 
+export function watchProjects(cb, onError) {
+  return onSnapshot(query(collection(db, "projects"), orderBy("startDate", "desc")), { includeMetadataChanges: true },
+    (s) => cb(s.docs.map(withId), !s.metadata.fromCache || s.size > 0), onError);
+}
+
+export function watchMyProjects(uid, cb, onError) {
+  return onSnapshot(query(collection(db, "projects"), where("assignedUsers", "array-contains", uid)), { includeMetadataChanges: true },
+    (s) => cb(sortProjects(s.docs.map(withId)), !s.metadata.fromCache || s.size > 0), onError);
+}
+
 export async function listMyProjects(uid) {
   const snap = await getDocs(query(collection(db, "projects"), where("assignedUsers", "array-contains", uid)));
   return sortProjects(snap.docs.map(withId));
@@ -143,6 +165,10 @@ export async function saveProject(id, data) {
 }
 
 export const setFreeze = (id, freeze) => updateDoc(doc(db, "projects", id), { freeze, ...stamp() });
+
+/** Change one staff member's access (none / readonly / locked) on a project. */
+export const setStaffAccess = (id, uid, access) =>
+  updateDoc(doc(db, "projects", id), { [`staffAccess.${uid}`]: access, ...stamp() });
 
 /** Deletes a project with all its items, photo records and photo files. */
 export async function deleteProject(id) {

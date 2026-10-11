@@ -2,23 +2,21 @@ import { auth } from "../firebase.js";
 import { sendPasswordResetEmail } from "../sdk.js";
 import { requireAuth, ROLES, toEmail, loginLabel, isUsernameLogin } from "../auth.js";
 import { renderShell } from "../layout.js";
-import { listUsers, createUser, updateUser, listProjects } from "../data.js";
+import { watchUsers, watchProjects, createUser, updateUser } from "../data.js";
 import { $, esc, toast, errorText, openModal, options, debounce, emptyState, confirmDialog } from "../ui.js";
 
-const state = { users: [], projects: [] };
+const state = { users: [], projects: [], ready: { users: false, projects: false } };
 
 const profile = await requireAuth({ admin: true });
 renderShell(profile, { active: "users", title: "Users & Admins" });
-await load();
 bind();
+load();
 
-async function load() {
-  try {
-    [state.users, state.projects] = await Promise.all([listUsers(), listProjects()]);
-    render();
-  } catch (err) {
-    $("#list").innerHTML = emptyState(errorText(err), "⚠️");
-  }
+/** Live listeners: the list fills in as soon as the server answers and stays current. */
+function load() {
+  const showError = (err) => ($("#list").innerHTML = emptyState(errorText(err), "⚠️"));
+  watchUsers((list, ready) => { state.users = list; state.ready.users ||= ready; render(); }, showError);
+  watchProjects((list, ready) => { state.projects = list; state.ready.projects ||= ready; render(); }, showError);
 }
 
 function bind() {
@@ -38,6 +36,7 @@ const canEdit = (u) => u.role !== "root" || u.uid === profile.uid;
 const assignedCount = (uid) => state.projects.filter((p) => (p.assignedUsers || []).includes(uid)).length;
 
 function render() {
+  if (!state.ready.users || !state.ready.projects) return;
   const term = $("#search").value.trim().toLowerCase();
   const role = $("#role-filter").value;
   const list = state.users.filter((u) => {
@@ -110,7 +109,6 @@ function createDialog() {
         role: fd.get("role"),
       });
       toast("User created", "success");
-      await load();
     },
   });
 }
@@ -145,7 +143,6 @@ function editDialog(u) {
       }
       await updateUser(u.uid, data);
       toast("User updated", "success");
-      await load();
     },
   });
 }

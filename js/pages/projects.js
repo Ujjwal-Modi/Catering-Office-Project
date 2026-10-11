@@ -1,25 +1,28 @@
 import { requireAuth } from "../auth.js";
 import { renderShell } from "../layout.js";
-import { listProjects, listUsers, getMasters, saveProject, deleteProject, setFreeze } from "../data.js";
+import { watchProjects, watchUsers, getMasters, saveProject, deleteProject, setStaffAccess } from "../data.js";
 import {
   $, esc, num, toast, errorText, openModal, confirmDialog, options, debounce, emptyState,
-  projectStatus, STATUS_BADGE, FREEZE, rangeLabel, todayISO, fmtNum,
+  projectStatus, STATUS_BADGE, FREEZE, rangeLabel, todayISO, fmtNum, accessFor, accessBadges,
 } from "../ui.js";
 
-const state = { projects: [], users: [], masters: {} };
+const state = { projects: [], users: [], masters: {}, ready: { projects: false, users: false } };
 
 const profile = await requireAuth({ admin: true });
 renderShell(profile, { active: "projects", title: "Projects" });
-await load();
 bind();
+load();
 
-async function load() {
-  try {
-    [state.projects, state.users, state.masters] = await Promise.all([listProjects(), listUsers(), getMasters()]);
-    render();
-  } catch (err) {
-    $("#list").innerHTML = emptyState(errorText(err), "⚠️");
-  }
+/**
+ * Live listeners instead of one-off reads: the list appears as soon as the
+ * server answers (even if the first answer came from an empty offline cache)
+ * and stays up to date after edits.
+ */
+function load() {
+  const showError = (err) => ($("#list").innerHTML = emptyState(errorText(err), "⚠️"));
+  watchProjects((list, ready) => { state.projects = list; state.ready.projects ||= ready; render(); }, showError);
+  watchUsers((list, ready) => { state.users = list; state.ready.users ||= ready; render(); }, showError);
+  getMasters().then((m) => (state.masters = m)).catch(() => {});
 }
 
 function bind() {
@@ -30,7 +33,7 @@ function bind() {
 
   $("#list").addEventListener("click", async (e) => {
     const card = e.target.closest("[data-id]");
-    if (!card || e.target.closest("select, label")) return;
+    if (!card || e.target.closest("select, label, .staff-access")) return;
     const p = state.projects.find((x) => x.id === card.dataset.id);
     const action = e.target.closest("[data-action]")?.dataset.action;
     if (!action) return (location.href = `project.html?id=${p.id}`);
@@ -39,16 +42,17 @@ function bind() {
     if (action === "delete") removeProject(p);
   });
 
+  // Quick per-staff access change from the project card.
   $("#list").addEventListener("change", async (e) => {
-    if (!e.target.matches("[data-freeze]")) return;
+    if (!e.target.matches("[data-access]")) return;
     const id = e.target.closest("[data-id]").dataset.id;
+    const uid = e.target.dataset.access;
     try {
-      await setFreeze(id, e.target.value);
-      state.projects.find((x) => x.id === id).freeze = e.target.value;
-      toast(`Project set to "${FREEZE[e.target.value].label}"`, "success");
-      render();
+      await setStaffAccess(id, uid, e.target.value);
+      toast(`${userName(uid)}: ${FREEZE[e.target.value].label}`, "success");
     } catch (err) {
       toast(errorText(err), "error");
+      render();
     }
   });
 }
@@ -56,13 +60,14 @@ function bind() {
 const userName = (uid) => state.users.find((u) => u.uid === uid)?.name || "Removed user";
 
 function render() {
+  if (!state.ready.projects || !state.ready.users) return;
   const term = $("#search").value.trim().toLowerCase();
   const status = $("#status-filter").value;
   const freeze = $("#freeze-filter").value;
 
   const list = state.projects.filter((p) => {
     if (status && projectStatus(p) !== status) return false;
-    if (freeze && (p.freeze || "none") !== freeze) return false;
+    if (freeze && !(p.assignedUsers || []).some((uid) => accessFor(p, uid) === freeze)) return false;
     if (!term) return true;
     return [p.name, p.venue, p.eventType, p.remark].join(" ").toLowerCase().includes(term);
   });
@@ -75,14 +80,13 @@ function render() {
 
   $("#list").innerHTML = list.map((p) => {
     const st = projectStatus(p);
-    const fz = p.freeze || "none";
-    const assigned = (p.assignedUsers || []).map(userName);
+    const assigned = p.assignedUsers || [];
     return `
     <article class="card project-card" data-id="${p.id}">
       <div class="between">
         <div class="gap">
           <span class="badge ${STATUS_BADGE[st]}">${st}</span>
-          <span class="badge ${FREEZE[fz].badge}">${FREEZE[fz].label}</span>
+          ${assigned.length ? accessBadges(p) : ""}
         </div>
         <div class="gap">
           <button class="icon-btn" data-action="edit" title="Edit">✎</button>
@@ -96,24 +100,29 @@ function render() {
         ${p.eventType ? `<span>🎉 ${esc(p.eventType)}</span>` : ""}
         ${p.pax ? `<span>👥 ${fmtNum(p.pax)} pax</span>` : ""}
       </div>
-      <p class="small muted mt">${assigned.length ? `Assigned: ${esc(assigned.join(", "))}` : "Not assigned to anyone"}</p>
-      <div class="between mt">
-        <label class="small muted" for="fz-${p.id}">Access</label>
-        <select id="fz-${p.id}" data-freeze style="max-width:180px">
-          ${options(Object.entries(FREEZE).map(([value, f]) => ({ value, label: f.label })), fz)}
-        </select>
-      </div>
+      ${assigned.length ? `
+        <div class="staff-access mt">
+          <span class="xs muted">Staff access</span>
+          ${assigned.map((uid) => `
+            <div class="staff-access-row">
+              <label class="small" for="ac-${p.id}-${uid}">${esc(userName(uid))}</label>
+              <select id="ac-${p.id}-${uid}" data-access="${uid}" class="access-${accessFor(p, uid)}">
+                ${options(Object.entries(FREEZE).map(([value, f]) => ({ value, label: f.label })), accessFor(p, uid))}
+              </select>
+            </div>`).join("")}
+        </div>` : `<p class="small muted mt">Not assigned to anyone</p>`}
     </article>`;
   }).join("");
 }
 
-function editProject(p = null) {
+async function editProject(p = null) {
+  if (!state.ready.users) return toast("Still loading staff list, try again in a moment.");
+  if (!state.masters.eventTypes) state.masters = await getMasters().catch(() => ({}));
   const staff = state.users.filter((u) => u.active && u.role === "user");
   const assigned = new Set(p?.assignedUsers || []);
-  const fz = p?.freeze || "none";
   const eventTypes = [...new Set([...(state.masters.eventTypes || []), ...(p?.eventType ? [p.eventType] : [])])];
 
-  openModal({
+  const { el } = openModal({
     title: p ? "Edit project" : "New project",
     wide: true,
     submitLabel: p ? "Save changes" : "Create project",
@@ -152,21 +161,18 @@ function editProject(p = null) {
           <textarea name="remark">${esc(p?.remark)}</textarea>
         </div>
         <div class="field span-all">
-          <label>Assign staff</label>
+          <label>Assign staff &amp; set their access</label>
           ${staff.length
-            ? `<div class="check-list">${staff.map((u) => `
-                <label class="check"><input type="checkbox" name="assigned" value="${u.uid}" ${assigned.has(u.uid) ? "checked" : ""}/>
-                <span>${esc(u.name)} <span class="muted xs">${esc(u.phone || "")}</span></span></label>`).join("")}</div>`
+            ? `<div class="check-list staff-pick">${staff.map((u) => `
+                <div class="staff-pick-row">
+                  <label class="check"><input type="checkbox" name="assigned" value="${u.uid}" ${assigned.has(u.uid) ? "checked" : ""}/>
+                  <span>${esc(u.name)} <span class="muted xs">${esc(u.phone || "")}</span></span></label>
+                  <select name="access-${u.uid}" aria-label="Access for ${esc(u.name)}" ${assigned.has(u.uid) ? "" : "disabled"}>
+                    ${options(Object.entries(FREEZE).map(([value, f]) => ({ value, label: f.label })), p ? accessFor(p, u.uid) : "none")}
+                  </select>
+                </div>`).join("")}</div>`
             : `<p class="small muted">No active staff users. Create them on the Users page.</p>`}
-        </div>
-        <div class="field span-all">
-          <label>Access for staff</label>
-          <div class="segmented">
-            ${Object.entries(FREEZE).map(([value, f]) => `
-              <input type="radio" id="fz-${value}" name="freeze" value="${value}" ${fz === value ? "checked" : ""}/>
-              <label for="fz-${value}">${f.label}</label>`).join("")}
-          </div>
-          <span class="hint">Open: staff can add/edit · View only: staff can open but not edit · Locked: staff can't open.</span>
+          <span class="hint">Open: can add/edit · View only: can open but not edit · Locked: can't open.</span>
         </div>
       </div>`,
     onSubmit: async (fd) => {
@@ -180,7 +186,9 @@ function editProject(p = null) {
         contact: fd.get("contact").trim(),
         remark: fd.get("remark").trim(),
         assignedUsers: fd.getAll("assigned"),
-        freeze: fd.get("freeze") || "none",
+        // Access is per staff member now; the old project-wide setting is reset to Open.
+        staffAccess: Object.fromEntries(fd.getAll("assigned").map((uid) => [uid, fd.get(`access-${uid}`) || "none"])),
+        freeze: "none",
       };
       if (data.endDate < data.startDate) {
         toast("End date can't be before start date.", "error");
@@ -188,8 +196,13 @@ function editProject(p = null) {
       }
       await saveProject(p?.id, data);
       toast(p ? "Project updated" : "Project created", "success");
-      await load();
     },
+  });
+
+  // Access dropdown is only active for ticked staff.
+  el.addEventListener("change", (e) => {
+    if (e.target.name !== "assigned") return;
+    el.querySelector(`[name="access-${e.target.value}"]`).disabled = !e.target.checked;
   });
 }
 
@@ -200,7 +213,6 @@ async function removeProject(p) {
     toast("Deleting…");
     await deleteProject(p.id);
     toast("Project deleted", "success");
-    await load();
   } catch (err) {
     toast(errorText(err), "error");
   }

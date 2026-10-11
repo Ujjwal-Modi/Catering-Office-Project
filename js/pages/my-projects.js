@@ -1,8 +1,8 @@
 import { requireAuth } from "../auth.js";
 import { renderShell } from "../layout.js";
-import { listMyProjects } from "../data.js";
+import { watchMyProjects } from "../data.js";
 import {
-  $, esc, emptyState, errorText, debounce, projectStatus, STATUS_BADGE, FREEZE, rangeLabel, fmtNum, toast,
+  $, esc, emptyState, errorText, debounce, projectStatus, STATUS_BADGE, FREEZE, rangeLabel, fmtNum, toast, accessFor,
 } from "../ui.js";
 
 const profile = await requireAuth();
@@ -10,15 +10,16 @@ if (profile.isAdmin) location.replace("projects.html");
 renderShell(profile, { active: "projects", title: "My Projects" });
 
 let projects = [];
-try {
-  projects = await listMyProjects(profile.uid);
-} catch (err) {
-  $("#list").innerHTML = emptyState(errorText(err), "⚠️");
-}
+let ready = false;
 $("#hello").textContent = `Hello, ${profile.name.split(" ")[0]} 👋`;
 $("#search").oninput = debounce(render);
 $("#status-filter").onchange = render;
-render();
+// Live list: appears once the server answers; access changes by admin show instantly.
+watchMyProjects(profile.uid, (list, isReady) => {
+  projects = list;
+  ready ||= isReady;
+  render();
+}, (err) => ($("#list").innerHTML = emptyState(errorText(err), "⚠️")));
 
 $("#list").addEventListener("click", (e) => {
   const card = e.target.closest("[data-id]");
@@ -28,6 +29,7 @@ $("#list").addEventListener("click", (e) => {
 });
 
 function render() {
+  if (!ready) return;
   const term = $("#search").value.trim().toLowerCase();
   const status = $("#status-filter").value;
   // Ongoing first, then upcoming (soonest first), then completed.
@@ -44,7 +46,7 @@ function render() {
   }
   $("#list").innerHTML = list.map((p) => {
     const st = projectStatus(p);
-    const fz = p.freeze || "none";
+    const fz = accessFor(p, profile.uid);
     return `
       <article class="card project-card ${fz === "locked" ? "is-locked" : ""}" data-id="${p.id}" ${fz === "locked" ? 'data-locked="1"' : ""}>
         <div class="gap">
