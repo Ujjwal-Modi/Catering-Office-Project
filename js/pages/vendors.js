@@ -1,21 +1,28 @@
 import { requireAuth } from "../auth.js";
 import { renderShell } from "../layout.js";
-import { listVendors, getVendorRates, getMasters, saveVendor, deleteVendor } from "../data.js";
+import { listVendors, getVendorRates, getMasters, saveVendor, addVendorByStaff, deleteVendor } from "../data.js";
 import { $, esc, num, toast, errorText, openModal, confirmDialog, options, debounce, emptyState, fmtMoney } from "../ui.js";
+import { t } from "../i18n.js";
 
 const state = { vendors: [], rates: {}, masters: {} };
 
-const profile = await requireAuth({ admin: true });
+// Admins: full vendor master. Staff: can view active vendors and add new ones,
+// but can't edit, delete or see rates (enforced in firestore.rules too).
+const profile = await requireAuth();
+const isAdmin = profile.isAdmin;
 renderShell(profile, { active: "vendors", title: "Vendor Master" });
+$("#status-filter").hidden = !isAdmin;
 await load();
 bind();
 
 async function load() {
   try {
-    [state.vendors, state.rates, state.masters] = await Promise.all([listVendors(), getVendorRates(), getMasters()]);
+    [state.vendors, state.rates, state.masters] = await Promise.all([
+      listVendors(), isAdmin ? getVendorRates() : {}, getMasters(),
+    ]);
     const types = [...new Set([...state.masters.vendorTypes, ...state.vendors.map((v) => v.type)])].sort();
     const cur = $("#type-filter").value;
-    $("#type-filter").innerHTML = options(types, cur, { placeholder: "All vendor types" });
+    $("#type-filter").innerHTML = options(types, cur, { placeholder: t("All vendor types") });
     render();
   } catch (err) {
     $("#list").innerHTML = emptyState(errorText(err), "⚠️");
@@ -23,7 +30,7 @@ async function load() {
 }
 
 function bind() {
-  $("#new-btn").onclick = () => editVendor();
+  $("#new-btn").onclick = () => (isAdmin ? editVendor() : addVendor());
   $("#search").oninput = debounce(render);
   $("#type-filter").onchange = render;
   $("#status-filter").onchange = render;
@@ -31,6 +38,7 @@ function bind() {
     const btn = e.target.closest("[data-action]");
     if (!btn) return;
     const v = state.vendors.find((x) => x.id === btn.closest("[data-id]").dataset.id);
+    if (!isAdmin) return;
     if (btn.dataset.action === "edit") editVendor(v);
     if (btn.dataset.action === "delete") removeVendor(v);
   });
@@ -39,7 +47,7 @@ function bind() {
 function render() {
   const term = $("#search").value.trim().toLowerCase();
   const type = $("#type-filter").value;
-  const status = $("#status-filter").value;
+  const status = isAdmin ? $("#status-filter").value : "active";
   const list = state.vendors.filter((v) => {
     if (type && v.type !== type) return false;
     if (status === "active" && v.active === false) return false;
@@ -47,19 +55,26 @@ function render() {
     return !term || [v.name, v.phone, v.type, v.unit, v.notes].join(" ").toLowerCase().includes(term);
   });
 
-  $("#count").textContent = `${list.length} vendor${list.length === 1 ? "" : "s"}`;
+  $("#count").textContent = t(list.length === 1 ? "{n} vendor" : "{n} vendors", { n: list.length });
   if (!list.length) {
     $("#list").innerHTML = emptyState(state.vendors.length ? "No vendors match your filters." : "No vendors yet. Add your first vendor.");
     return;
   }
-  $("#list").innerHTML = `
+  $("#list").innerHTML = isAdmin ? adminTable(list) : staffTable(list);
+}
+
+/** "Added by Ramesh" for vendors that staff added. */
+const addedBy = (v) => (v.createdByName ? `<div class="xs muted">${esc(t("Added by {name}", { name: v.createdByName }))}</div>` : "");
+
+function adminTable(list) {
+  return `
     <div class="table-wrap">
       <table class="table responsive">
         <thead><tr><th>Vendor</th><th>Type</th><th>Phone</th><th>Unit</th><th class="num">Rate / unit</th><th>Status</th><th></th></tr></thead>
         <tbody>
           ${list.map((v) => `
             <tr data-id="${v.id}">
-              <td data-label="Vendor"><span class="strong">${esc(v.name)}</span>${v.notes ? `<div class="xs muted">${esc(v.notes)}</div>` : ""}</td>
+              <td data-label="Vendor"><span class="strong">${esc(v.name)}</span>${v.notes ? `<div class="xs muted">${esc(v.notes)}</div>` : ""}${addedBy(v)}</td>
               <td data-label="Type">${esc(v.type)}</td>
               <td data-label="Phone">${v.phone ? `<a href="tel:${esc(v.phone)}">${esc(v.phone)}</a>` : "—"}</td>
               <td data-label="Unit">${esc(v.unit)}</td>
@@ -74,6 +89,89 @@ function render() {
         </tbody>
       </table>
     </div>`;
+}
+
+/** Staff view: no rates, no edit / delete / payments. */
+function staffTable(list) {
+  return `
+    <div class="table-wrap">
+      <table class="table responsive">
+        <thead><tr><th>${t("Vendor")}</th><th>${t("Type")}</th><th>${t("Phone")}</th><th>${t("Unit")}</th></tr></thead>
+        <tbody>
+          ${list.map((v) => `
+            <tr data-id="${v.id}">
+              <td data-label="${esc(t("Vendor"))}"><span class="strong">${esc(v.name)}</span>${v.notes ? `<div class="xs muted">${esc(v.notes)}</div>` : ""}${addedBy(v)}</td>
+              <td data-label="${esc(t("Type"))}">${esc(v.type)}</td>
+              <td data-label="${esc(t("Phone"))}">${v.phone ? `<a href="tel:${esc(v.phone)}">${esc(v.phone)}</a>` : "—"}</td>
+              <td data-label="${esc(t("Unit"))}">${esc(v.unit)}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+const isDuplicate = (data, id) =>
+  state.vendors.some((x) => x.id !== id && x.type === data.type && x.name.toLowerCase() === data.name.toLowerCase());
+
+/** Staff: add only. No rate, always active; they can't edit it afterwards. */
+function addVendor() {
+  openModal({
+    title: t("Add vendor"),
+    submitLabel: t("Add vendor"),
+    body: `
+      <div class="form-grid cols-2">
+        <div class="field">
+          <label class="req">${t("Vendor type")}</label>
+          <select name="type" required>${options(state.masters.vendorTypes, "", { placeholder: t("Select type") })}</select>
+        </div>
+        <div class="field">
+          <label class="req">${t("Vendor name")}</label>
+          <input name="name" required />
+        </div>
+        <div class="field">
+          <label>${t("Phone number")}</label>
+          <input name="phone" type="tel" inputmode="tel" />
+        </div>
+        <div class="field">
+          <label class="req">${t("Unit")}</label>
+          <input name="unit" required list="unit-list" placeholder="${esc(t("kg, litre, piece…"))}" />
+          <datalist id="unit-list">${options(state.masters.units)}</datalist>
+        </div>
+        <div class="field">
+          <label>GSTIN</label>
+          <input name="gstin" placeholder="${esc(t("Optional"))}" />
+        </div>
+        <div class="field span-all">
+          <label>${t("Address / notes")}</label>
+          <textarea name="notes"></textarea>
+        </div>
+        <p class="hint span-all">${t("Check the details before saving — once added, only an admin can change or remove a vendor.")}</p>
+      </div>`,
+    onSubmit: async (fd) => {
+      const data = {
+        type: fd.get("type"),
+        name: fd.get("name").trim(),
+        phone: fd.get("phone").trim(),
+        unit: fd.get("unit").trim(),
+        gstin: fd.get("gstin").trim().toUpperCase(),
+        notes: fd.get("notes").trim(),
+      };
+      if (!data.name || !data.unit) return false;
+      if (isDuplicate(data)) {
+        toast("A vendor with this name already exists in this type.", "error");
+        return false;
+      }
+      const { done } = addVendorByStaff(data, profile);
+      if (!navigator.onLine) {
+        done.catch((e) => toast(errorText(e), "error"));
+        toast("Saved offline — will sync when internet returns", "warn");
+      } else {
+        await done;
+        toast("Vendor added", "success");
+      }
+      await load();
+    },
+  });
 }
 
 function editVendor(v = null) {
@@ -124,8 +222,7 @@ function editVendor(v = null) {
         notes: fd.get("notes").trim(),
         active: fd.get("active") === "on",
       };
-      const dup = state.vendors.find((x) => x.id !== v?.id && x.type === data.type && x.name.toLowerCase() === data.name.toLowerCase());
-      if (dup) {
+      if (isDuplicate(data, v?.id)) {
         toast("A vendor with this name already exists in this type.", "error");
         return false;
       }

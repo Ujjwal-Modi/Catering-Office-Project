@@ -47,7 +47,16 @@ await t("admin writes vendor + rate", async () => {
 });
 await t("staff reads vendors", () => assertSucceeds(getDocs(collection(db("s1"), "vendors"))));
 await t("staff cannot read rates", () => assertFails(getDoc(doc(db("s1"), "vendorPrivate/v1"))));
-await t("staff cannot write vendor", () => assertFails(setDoc(doc(db("s1"), "vendors/v2"), { name: "x" })));
+await t("staff cannot write bad vendor", () => assertFails(setDoc(doc(db("s1"), "vendors/v2"), { name: "x" })));
+const SV = { type: "Dairy", name: "Staff Dairy", phone: "", unit: "litre", gstin: "", notes: "", active: true, createdBy: "s1", createdByName: "S1" };
+await t("staff adds vendor", () => assertSucceeds(setDoc(doc(db("s1"), "vendors/sv1"), SV)));
+await t("staff cannot add inactive vendor", () => assertFails(setDoc(doc(db("s1"), "vendors/sv2"), { ...SV, active: false })));
+await t("staff cannot add vendor as someone else", () => assertFails(setDoc(doc(db("s1"), "vendors/sv3"), { ...SV, createdBy: "s2" })));
+await t("staff cannot add extra fields", () => assertFails(setDoc(doc(db("s1"), "vendors/sv4"), { ...SV, rate: 10 })));
+await t("staff cannot edit vendor", () => assertFails(updateDoc(doc(db("s1"), "vendors/sv1"), { name: "changed" })));
+await t("staff cannot delete vendor", () => assertFails(deleteDoc(doc(db("s1"), "vendors/sv1"))));
+await t("staff cannot write rate", () => assertFails(setDoc(doc(db("s1"), "vendorPrivate/sv1"), { rate: 10 })));
+await t("admin edits staff-added vendor", () => assertSucceeds(updateDoc(doc(db("adm"), "vendors/sv1"), { name: "Staff Dairy 2" })));
 await t("inactive user cannot read vendors", () => assertFails(getDocs(collection(db("off"), "vendors"))));
 
 // ---- projects

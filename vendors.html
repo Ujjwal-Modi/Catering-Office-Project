@@ -15,23 +15,23 @@
       <div class="page" id="page">
         <div class="page-head">
           <div>
-            <h2>Vendor master</h2>
+            <h2 data-i18n>Vendor master</h2>
             <span class="small muted" id="count"></span>
           </div>
-          <button class="btn btn-primary" id="new-btn">+ Add vendor</button>
+          <button class="btn btn-primary" id="new-btn" data-i18n>+ Add vendor</button>
         </div>
 
         <div class="toolbar">
-          <div class="search"><input id="search" type="search" placeholder="Search name, phone…" /></div>
+          <div class="search"><input id="search" type="search" placeholder="Search name, phone…" data-i18n-placeholder /></div>
           <select id="type-filter"></select>
-          <select id="status-filter">
+          <select id="status-filter" hidden>
             <option value="">Active &amp; inactive</option>
             <option value="active" selected>Active only</option>
             <option value="inactive">Inactive only</option>
           </select>
         </div>
 
-        <div id="list"><div class="loading">Loading…</div></div>
+        <div id="list"><div class="loading" data-i18n>Loading…</div></div>
       </div>
     </main>
   </div>

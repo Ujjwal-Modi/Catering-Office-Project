@@ -113,6 +113,23 @@ export async function saveVendor(id, data, rate) {
   return vRef.id;
 }
 
+/**
+ * Staff can add a vendor (no rate, always active) but can't edit or delete.
+ * Returns { id, done } — `done` resolves when the server confirms, so the
+ * caller can skip waiting on it when offline.
+ */
+export function addVendorByStaff(data, profile) {
+  const vRef = doc(collection(db, "vendors"));
+  const done = setDoc(vRef, {
+    ...data,
+    active: true,
+    createdAt: serverTimestamp(),
+    createdBy: auth.currentUser.uid,
+    createdByName: profile.name || "",
+  });
+  return { id: vRef.id, done };
+}
+
 export async function deleteVendor(id) {
   const batch = writeBatch(db);
   batch.delete(doc(db, "vendors", id));

@@ -33,6 +33,7 @@ These modes apply instantly, even on phones that already have the project open.
 **Photos** *(currently disabled)*: upload into buckets (Delivery, Kitchen, Bills…), with an optional remark on each photo. You can use the camera or the gallery. Photos are stored **at original quality (no compression)** so they can be reused on social media; each upload shows a progress %. Max 50 MB per photo.
 
 **Vendor master**: type, name, phone, unit, plus rate per unit (only admins can see it), GSTIN, notes and an active/inactive switch.
+- **Staff** also get a *Vendors* page: they can see active vendors and **add** new ones (no rate, always active, marked "Added by …"). They can't edit or delete vendors — only admins can.
 
 **Masters**: editable lists of vendor types, units, event types and photo buckets.
 
@@ -127,7 +128,7 @@ dashboard.html      Admin dashboard
 projects.html       Admin: project list / create / freeze / assign
 my-projects.html    Staff: assigned projects
 project.html        Project workspace: items, photos, summary (staff and admin)
-vendors.html        Vendor master
+vendors.html        Vendor master (admin: full; staff: view + add only)
 masters.html        Vendor types, units, event types, photo buckets
 users.html          Users and admins
 payments.html       Vendor payments and balances
@@ -161,7 +162,7 @@ tests/              Security-rule tests (run with the Firebase emulator)
 | `users/{uid}` | name, phone, email, role (`root`/`admin`/`user`), active |
 | `meta/setup` | marks that first-time setup is done |
 | `masters/lists` | vendorTypes[], units[], eventTypes[], photoBuckets[] |
-| `vendors/{id}` | type, name, phone, unit, gstin, notes, active |
+| `vendors/{id}` | type, name, phone, unit, gstin, notes, active, createdBy / createdByName (when added by staff) |
 | `vendorPrivate/{vendorId}` | rate (admins only) |
 | `projects/{id}` | name, startDate, endDate, venue, eventType, pax, contact, remark, assignedUsers[], staffAccess {uid: none/readonly/locked}, freeze (old project-wide setting, used only as a fallback) |
 | `projects/{id}/entries/{id}` | vendorId, vendorName, vendorType, unit, date, slot, orderedQty, receivedQty, ordered, received, remark, createdBy… |

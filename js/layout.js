@@ -29,7 +29,10 @@ const ADMIN_NAV = [
   ["masters", "Masters", "masters.html"],
 ];
 
-const USER_NAV = [["projects", "My Projects", "my-projects.html"]];
+const USER_NAV = [
+  ["projects", "My Projects", "my-projects.html"],
+  ["vendors", "Vendors", "vendors.html"],
+];
 
 export function renderShell(profile, { active, title }) {
   // Hindi is offered on the staff side only; admin screens stay in English.

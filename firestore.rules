@@ -86,7 +86,19 @@ service cloud.firestore {
 
     match /vendors/{id} {
       allow read: if isActive();
-      allow write: if isAdmin();
+      // Staff can add a vendor (always active, stamped with who added it),
+      // but only admins can edit or delete vendors.
+      allow create: if isAdmin() || (
+        isActive()
+        && request.resource.data.keys().hasOnly(['type', 'name', 'phone', 'unit', 'gstin', 'notes',
+                                                 'active', 'createdAt', 'createdBy', 'createdByName'])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.active == true
+        && request.resource.data.type is string && request.resource.data.type.size() > 0
+        && request.resource.data.name is string && request.resource.data.name.size() > 0
+        && request.resource.data.unit is string && request.resource.data.unit.size() > 0
+      );
+      allow update, delete: if isAdmin();
     }
 
     // Rates: admins only (staff never see prices)

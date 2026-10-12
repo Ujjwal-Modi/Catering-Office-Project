@@ -192,6 +192,26 @@ const HI = {
   "Entries": "एंट्री",
   "Short": "कमी",
 
+  /* ---- vendors ---- */
+  "Vendors": "वेंडर",
+  "Vendor Master": "वेंडर सूची",
+  "Vendor master": "वेंडर सूची",
+  "+ Add vendor": "+ वेंडर जोड़ें",
+  "Add vendor": "वेंडर जोड़ें",
+  "Search name, phone…": "नाम, फ़ोन खोजें…",
+  "Type": "प्रकार",
+  "Phone number": "फ़ोन नंबर",
+  "kg, litre, piece…": "किलो, लीटर, पीस…",
+  "Address / notes": "पता / नोट्स",
+  "{n} vendor": "{n} वेंडर",
+  "{n} vendors": "{n} वेंडर",
+  "Added by {name}": "{name} ने जोड़ा",
+  "No vendors match your filters.": "फ़िल्टर से कोई वेंडर नहीं मिला।",
+  "No vendors yet. Add your first vendor.": "अभी कोई वेंडर नहीं है। पहला वेंडर जोड़ें।",
+  "A vendor with this name already exists in this type.": "इस प्रकार में इस नाम का वेंडर पहले से है।",
+  "Vendor added": "वेंडर जुड़ गया",
+  "Check the details before saving — once added, only an admin can change or remove a vendor.": "सेव करने से पहले जानकारी जाँच लें — जोड़ने के बाद सिर्फ़ एडमिन ही वेंडर को बदल या हटा सकता है।",
+
   /* ---- profile ---- */
   "My details": "मेरी जानकारी",
   "Name": "नाम",
