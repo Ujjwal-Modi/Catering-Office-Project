@@ -1,10 +1,10 @@
 import { requireAuth } from "../auth.js";
 import { renderShell } from "../layout.js";
-import { listVendors, getVendorRates, getMasters, saveVendor, addVendorByStaff, deleteVendor } from "../data.js";
+import { watchVendors, watchVendorRates, getMasters, saveVendor, addVendorByStaff, deleteVendor } from "../data.js";
 import { $, esc, num, toast, errorText, openModal, confirmDialog, options, debounce, emptyState, fmtMoney } from "../ui.js";
 import { t } from "../i18n.js";
 
-const state = { vendors: [], rates: {}, masters: {} };
+const state = { vendors: [], rates: {}, masters: { vendorTypes: [], units: [] }, ready: false };
 
 // Admins: full vendor master. Staff: can view active vendors and add new ones,
 // but can't edit, delete or see rates (enforced in firestore.rules too).
@@ -15,18 +15,31 @@ $("#status-filter").hidden = !isAdmin;
 await load();
 bind();
 
+/**
+ * Live lists: the page updates by itself when anyone adds or edits a vendor,
+ * and keeps showing "Loading…" until the server answers (not an empty or
+ * partial list from the phone's offline cache).
+ */
 async function load() {
+  const showError = (err) => ($("#list").innerHTML = emptyState(errorText(err), "⚠️"));
   try {
-    [state.vendors, state.rates, state.masters] = await Promise.all([
-      listVendors(), isAdmin ? getVendorRates() : {}, getMasters(),
-    ]);
-    const types = [...new Set([...state.masters.vendorTypes, ...state.vendors.map((v) => v.type)])].sort();
-    const cur = $("#type-filter").value;
-    $("#type-filter").innerHTML = options(types, cur, { placeholder: t("All vendor types") });
-    render();
+    state.masters = await getMasters();
   } catch (err) {
-    $("#list").innerHTML = emptyState(errorText(err), "⚠️");
+    showError(err);
   }
+  watchVendors((list, ready) => {
+    state.vendors = list;
+    state.ready ||= ready;
+    refreshTypes();
+    render();
+  }, showError);
+  if (isAdmin) watchVendorRates((rates) => { state.rates = rates; render(); }, showError);
+}
+
+function refreshTypes() {
+  const types = [...new Set([...(state.masters.vendorTypes || []), ...state.vendors.map((v) => v.type).filter(Boolean)])].sort();
+  const cur = $("#type-filter").value;
+  $("#type-filter").innerHTML = options(types, cur, { placeholder: t("All vendor types") });
 }
 
 function bind() {
@@ -45,6 +58,7 @@ function bind() {
 }
 
 function render() {
+  if (!state.ready) return;
   const term = $("#search").value.trim().toLowerCase();
   const type = $("#type-filter").value;
   const status = isAdmin ? $("#status-filter").value : "active";
@@ -169,7 +183,6 @@ function addVendor() {
         await done;
         toast("Vendor added", "success");
       }
-      await load();
     },
   });
 }
@@ -228,7 +241,6 @@ function editVendor(v = null) {
       }
       await saveVendor(v?.id, data, num(fd.get("rate")));
       toast(v ? "Vendor updated" : "Vendor added", "success");
-      await load();
     },
   });
 }
@@ -239,7 +251,6 @@ async function removeVendor(v) {
   try {
     await deleteVendor(v.id);
     toast("Vendor deleted", "success");
-    await load();
   } catch (err) {
     toast(errorText(err), "error");
   }

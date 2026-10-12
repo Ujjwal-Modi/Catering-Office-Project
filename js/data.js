@@ -91,9 +91,26 @@ export const updateOwnProfile = (uid, { name, phone }) =>
 
 /* ============================ Vendors ============================ */
 
+const toVendors = (snap) =>
+  snap.docs.map(withId).sort((a, b) => (a.type || "").localeCompare(b.type || "") || (a.name || "").localeCompare(b.name || ""));
+
 export async function listVendors() {
-  const snap = await getDocs(collection(db, "vendors"));
-  return snap.docs.map(withId).sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name));
+  return toVendors(await getDocs(collection(db, "vendors")));
+}
+
+/** Live vendor list; `ready` works like watchUsers (false = cache only so far). */
+export function watchVendors(cb, onError) {
+  return onSnapshot(collection(db, "vendors"), { includeMetadataChanges: true },
+    (s) => cb(toVendors(s), !s.metadata.fromCache || s.size > 0), onError);
+}
+
+/** Live rates (admins only). */
+export function watchVendorRates(cb, onError) {
+  return onSnapshot(collection(db, "vendorPrivate"), (s) => {
+    const rates = {};
+    s.docs.forEach((d) => (rates[d.id] = d.data().rate || 0));
+    cb(rates);
+  }, onError);
 }
 
 /** Rates are admin-only, so they live in a separate collection staff can't read. */
